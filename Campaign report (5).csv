@@ -1,0 +1,32 @@
+Campaign report
+"October 1, 2025 - October 31, 2025"
+Campaign status,Campaign,Budget,Budget name,Budget type,Status,Status reasons,Optimization score,Account,Clicks,Impr.,CTR,Currency code,Avg. CPC,Cost,Bid strategy type,Conversions,Conv. rate,Search impr. share,Search top IS
+Enabled,Crossbreedholsters-US-PB,5000.00, --,Daily,Eligible (Limited),bidding strategy limited; limited by bidding strategy type; unknown,67.43,Ashes,160,895,17.88%,INR,98.47,15754.92,Maximize clicks,64.00,40.00%,56.92%,50.47%
+Enabled,Kohl's - US - AM,8000.00, --,Daily,Eligible (Limited),bidding strategy limited; limited by bidding strategy type; unknown,65.36,Ashes,867,"8,012",10.82%,INR,37.14,32196.96,Maximize clicks,414.34,47.79%,< 10%,< 10%
+Enabled,Macy's-USA-AM,12000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,67.03,Ashes,233,"2,893",8.05%,INR,43.48,10131.81,Maximize clicks,93.00,39.91%,< 10%,< 10%
+Enabled,PottersCookShop-UK-KL(paused),2000.00, --,Daily,Eligible,unknown,89.56,Ashes,17,79,21.52%,INR,92.93,1579.85,Manual CPC,9.00,52.94%,56.84%,45.26%
+Enabled,NORD VPN - WW - VC,5000.00, --,Daily,Eligible (Limited),bidding strategy learning; limited by bidding strategy type; unknown,68.26,Ashes,188,"1,576",11.93%,INR,55.66,10463.31,Maximize clicks,94.00,50.00%,< 10%,< 10%
+Enabled,VidaXL-UK-KL(paused),5000.00, --,Daily,Eligible,unknown,89.56,Ashes,187,668,27.99%,INR,61.60,11519.35,Maximize clicks,117.00,62.57%,67.61%,58.05%
+Enabled,wayfair-uk-kl(paused),20000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,59.70,RKT,"1,449","11,127",13.02%,INR,88.88,128785.65,Manual CPC,737.00,50.86%,30.81%,22.89%
+Enabled,Cb2-us-pm(paused),500.00, --,Daily,Eligible,unknown,89.66,RKT,58,362,16.02%,INR,59.82,3469.54,Maximize clicks,31.00,53.45%,< 10%,< 10%
+Enabled,mizuno-us-pm,500.00, --,Daily,Eligible,unknown,89.56,RKT,23,150,15.33%,INR,68.27,1570.25,Maximize clicks,1.00,4.34%,16.77%,12.83%
+Enabled,Stylevana-us-pm,500.00, --,Daily,Eligible,unknown,89.56,RKT,14,78,17.95%,INR,76.22,1067.06,Maximize clicks,11.00,78.57%,11.94%,< 10%
+Enabled,alibaba-WW-AD(paused),5000.00, --,Daily,Eligible (Limited),bidding strategy limited; limited by bidding strategy type; unknown,59.38,RKT,289,"1,439",20.08%,INR,99.30,28698.40,Maximize clicks,136.00,47.06%,41.83%,36.21%
+Enabled,EdibleArrangements-US-IM(paused),2000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,64.64,RKT,352,"2,041",17.25%,INR,52.72,18558.55,Maximize clicks,238.00,67.61%,15.36%,12.69%
+Enabled,Paramount-US-MB(paused),10000.00, --,Daily,Eligible,unknown,67.34,RKT,875,"5,855",14.94%,INR,89.10,77961.12,Manual CPC,493.50,56.40%,< 10%,< 10%
+Enabled,Roman-UK-KL,8000.00, --,Daily,Eligible (Limited),bidding strategy learning; limited by bidding strategy type; unknown,67.78,RKT,"2,148","9,358",22.95%,INR,57.45,123399.98,Maximize clicks,"1,040.04",48.42%,46.43%,37.22%
+Enabled,MottandBow-US-KL,5000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,68.43,RKT,135,833,16.21%,INR,121.72,16432.22,Manual CPC,61.00,45.18%,53.74%,45.08%
+Enabled,Zenni optical-us-am,6500.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,65.56,RKT,"1,423","8,376",16.99%,INR,60.17,85621.02,Manual CPC,952.51,66.94%,16.52%,13.07%
+Enabled,Adameve-us-AM,500.00, --,Daily,Eligible,unknown,89.56,SRH,12,166,7.23%,INR,83.44,1001.24,Maximize clicks,6.00,50.00%,14.01%,11.85%
+Enabled,Expondo-UK-KL(paused),500.00, --,Daily,Eligible,unknown,89.56,SRH,19,42,45.24%,INR,97.36,1849.92,Manual CPC,11.00,57.89%,76.19%,66.67%
+Enabled,Bluehost-WW-MB,500.00, --,Daily,Eligible,unknown,89.66,SRH,31,185,16.76%,INR,48.91,1516.20,Maximize clicks,18.00,58.06%,< 10%,< 10%
+Enabled,Stylevana-US-PB,500.00, --,Daily,Eligible,unknown,89.56,SRH,33,246,13.41%,INR,85.75,2829.68,Maximize clicks,13.00,39.39%,20.59%,14.08%
+Enabled,VineyardVines-WW-MB,500.00, --,Daily,Eligible,unknown,89.56,SRH,52,524,9.92%,INR,119.04,6190.10,Maximize clicks,25.00,48.08%,19.52%,14.25%
+Enabled,Sling TV-USA-MB,2000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,63.89,SRH,10,42,23.81%,INR,94.40,944.04,Manual CPC,1.00,10.00%,16.50%,13.50%
+Enabled,EdibleArrangements-CA-IM(paused),2000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,68.91,SRH,60,221,27.15%,INR,46.32,2779.16,Maximize clicks,32.00,53.33%,48.40%,45.55%
+Enabled,Pmall-MB,36000.00, --,Daily,Eligible (Limited),limited by bidding strategy type; unknown,73.64,SRH,"3,681","22,001",16.73%,INR,134.11,493648.21,Maximize clicks,"1,472.04",39.99%,52.01%,45.32%
+Total: Filtered campaigns, --, --, --, --, --,, --, --,"12,316","77,169",15.96%,INR,87.53,1077968.53, --,"6,070.44",49.29%,16.35%,12.51%
+Total: Manager account,,,,,,,,,"12,316","77,170",15.96%,INR,87.53,1077968.53,,"6,070.44",49.29%,16.31%,12.49%
+Total: Display,,,,,,,,,0,0, --,INR,0,0.00,,0.00,0.00%, --, --
+Total: Search,,,,,,,,,"12,316","77,170",15.96%,INR,87.53,1077968.53,,"6,070.44",49.29%,16.31%,12.49%
+Total: Performance Max,,,,,,,,,0,0, --,INR,0,0.00,,0.00,0.00%, --, --
