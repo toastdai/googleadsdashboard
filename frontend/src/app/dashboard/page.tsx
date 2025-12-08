@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import {
     campaigns,
+    enrichedCampaigns,
     totals,
     accountBreakdown,
     topPerformers,
@@ -18,6 +19,7 @@ import {
     dailyTrend,
     formatCurrency,
     formatNumber,
+    kelkooAggregates,
     Campaign
 } from "@/lib/campaign-data";
 import {
@@ -405,6 +407,89 @@ const QuickStatsBar = ({ campaigns: campList }: { campaigns: Campaign[] }) => {
     );
 };
 
+// View Banner - Shows different content based on selected view tab
+const ViewBanner = ({ view }: { view: "overview" | "performance" | "budget" }) => {
+    if (view === "overview") return null; // Overview shows default content
+
+    if (view === "performance") {
+        return (
+            <div className="bg-gradient-to-r from-purple-900/30 via-gray-900 to-cyan-900/30 rounded-2xl p-6 border border-purple-500/20 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-display font-bold text-white">Performance View</h2>
+                        <p className="text-sm text-gray-400">Key performance metrics and conversion analysis</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-purple-400">{(totals.conversions / totals.clicks * 100).toFixed(1)}%</p>
+                        <p className="text-xs text-gray-400 mt-1">Conversion Rate</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-cyan-400">{totals.ctr.toFixed(2)}%</p>
+                        <p className="text-xs text-gray-400 mt-1">Click-Through Rate</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-emerald-400">{topPerformers.length}</p>
+                        <p className="text-xs text-gray-400 mt-1">Top Performers</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-amber-400">{bottomPerformers.length}</p>
+                        <p className="text-xs text-gray-400 mt-1">Need Attention</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (view === "budget") {
+        return (
+            <div className="bg-gradient-to-r from-amber-900/30 via-gray-900 to-emerald-900/30 rounded-2xl p-6 border border-amber-500/20 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-emerald-500 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-display font-bold text-white">Budget View</h2>
+                        <p className="text-sm text-gray-400">Cost analysis and budget utilization</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-amber-400">{formatCurrency(totals.cost)}</p>
+                        <p className="text-xs text-gray-400 mt-1">Total Spend</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-white">Rs.{totals.avgCpc.toFixed(0)}</p>
+                        <p className="text-xs text-gray-400 mt-1">Avg CPC</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-cyan-400">Rs.{(totals.cost / totals.conversions).toFixed(0)}</p>
+                        <p className="text-xs text-gray-400 mt-1">CPA</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-emerald-400">{formatCurrency(kelkooAggregates.totalRevenueInr + kelkooAggregates.totalSaleValueInr)}</p>
+                        <p className="text-xs text-gray-400 mt-1">Kelkoo Revenue</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-purple-400">{formatCurrency(totals.cost / 31)}</p>
+                        <p className="text-xs text-gray-400 mt-1">Daily Avg Spend</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return null;
+};
+
 // Icons
 const ClicksIcon = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -455,6 +540,7 @@ export default function DashboardPage() {
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [comparisonMode, setComparisonMode] = useState(false);
     const [selectedView, setSelectedView] = useState<"overview" | "performance" | "budget">("overview");
+    const [activeKPI, setActiveKPI] = useState<string | null>(null);
 
     // Keyboard shortcuts
     useKeyboardShortcut('k', () => setShowCommandPalette(true), true);
@@ -566,17 +652,20 @@ export default function DashboardPage() {
             conversions: c.conversions,
         }));
 
-    // Table columns
+    // Table columns with Kelkoo data
     const campaignColumns = [
         {
             key: "name",
             header: "Campaign",
             sortable: true,
-            render: (value: string, row: Campaign) => (
+            render: (value: string, row: Campaign & { isKelkoo?: boolean }) => (
                 <button
                     onClick={() => setSelectedCampaign(row)}
-                    className="text-left hover:text-purple-400 transition-colors font-medium"
+                    className="text-left hover:text-purple-400 transition-colors font-medium flex items-center gap-2"
                 >
+                    {row.isKelkoo && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-500 to-cyan-500 rounded text-white">KL</span>
+                    )}
                     {value}
                 </button>
             )
@@ -596,6 +685,62 @@ export default function DashboardPage() {
                 <span className={`font-medium ${value >= 50 ? "text-emerald-400" : value >= 30 ? "text-white" : "text-amber-400"}`}>
                     {value.toFixed(1)}%
                 </span>
+            ),
+        },
+        {
+            key: "kelkooLeads",
+            header: "KL Leads",
+            align: "right" as const,
+            sortable: true,
+            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean }) => (
+                row.isKelkoo ? (
+                    <span className="text-cyan-400 font-medium">{value || 0}</span>
+                ) : (
+                    <span className="text-gray-600">-</span>
+                )
+            ),
+        },
+        {
+            key: "kelkooRevenueInr",
+            header: "KL Revenue",
+            align: "right" as const,
+            sortable: true,
+            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean }) => (
+                row.isKelkoo ? (
+                    <span className="text-emerald-400 font-medium">Rs.{(value || 0).toLocaleString()}</span>
+                ) : (
+                    <span className="text-gray-600">-</span>
+                )
+            ),
+        },
+        {
+            key: "actualROAS",
+            header: "ROAS",
+            align: "right" as const,
+            sortable: true,
+            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean }) => (
+                row.isKelkoo ? (
+                    <span className={`font-medium ${(value || 0) >= 1 ? "text-emerald-400" : "text-red-400"}`}>
+                        {(value || 0).toFixed(2)}x
+                    </span>
+                ) : (
+                    <span className="text-gray-600">-</span>
+                )
+            ),
+        },
+        {
+            key: "profitability",
+            header: "Profit",
+            align: "right" as const,
+            sortable: true,
+            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean }) => (
+                row.isKelkoo ? (
+                    <span className={`font-medium ${(value || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        Rs.{(value || 0).toLocaleString()}
+                    </span>
+                ) : (
+                    <span className="text-gray-600">-</span>
+                )
             ),
         },
     ];
@@ -631,6 +776,9 @@ export default function DashboardPage() {
             {/* Quick Stats Bar */}
             <QuickStatsBar campaigns={campaigns} />
 
+            {/* View Banner - Shows different content based on selected tab */}
+            <ViewBanner view={selectedView} />
+
             {/* AI Summary */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 via-gray-900 to-cyan-900/40 p-6 border border-purple-500/20">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(139,92,246,0.15),transparent_50%)]" />
@@ -661,6 +809,7 @@ export default function DashboardPage() {
                     icon={<ClicksIcon />}
                     color="primary"
                     sparkData={clicksSparkData}
+                    onClick={() => setSelectedMetric("clicks")}
                 />
                 <EnhancedKPICard
                     title="Total Cost"
@@ -669,6 +818,7 @@ export default function DashboardPage() {
                     icon={<CostIcon />}
                     color="warning"
                     sparkData={costSparkData}
+                    onClick={() => setSelectedMetric("cost")}
                 />
                 <EnhancedKPICard
                     title="Conversions"
@@ -679,6 +829,7 @@ export default function DashboardPage() {
                     icon={<ConversionsIcon />}
                     color="success"
                     sparkData={convSparkData}
+                    onClick={() => setSelectedMetric("conversions")}
                 />
                 <EnhancedKPICard
                     title="CTR"
@@ -687,6 +838,7 @@ export default function DashboardPage() {
                     icon={<CTRIcon />}
                     color="cyan"
                     sparkData={ctrSparkData}
+                    onClick={() => setActiveKPI("ctr")}
                 />
                 <EnhancedKPICard
                     title="Avg CPC"
@@ -694,6 +846,7 @@ export default function DashboardPage() {
                     subtitle="Per click"
                     icon={<CPCIcon />}
                     color="warning"
+                    onClick={() => setActiveKPI("cpc")}
                 />
                 <EnhancedKPICard
                     title="CPA"
@@ -701,6 +854,7 @@ export default function DashboardPage() {
                     subtitle="Per conversion"
                     icon={<ConversionsIcon />}
                     color="danger"
+                    onClick={() => setActiveKPI("cpa")}
                 />
                 <EnhancedKPICard
                     title="ROAS"
@@ -710,6 +864,7 @@ export default function DashboardPage() {
                     trendUp={true}
                     icon={<ROASIcon />}
                     color="success"
+                    onClick={() => setActiveKPI("roas")}
                 />
             </div>
 
@@ -859,15 +1014,96 @@ export default function DashboardPage() {
 
             {/* Campaign Table */}
             <DataTable
-                data={campaigns}
+                data={enrichedCampaigns}
                 columns={campaignColumns}
-                title="All Campaigns"
+                title="All Campaigns (KL campaigns with Kelkoo data shown first)"
                 searchKeys={["name", "account"]}
                 pageSize={10}
             />
 
             {/* Campaign Modal */}
             <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
+
+            {/* KPI Analytics Modal */}
+            {activeKPI && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setActiveKPI(null)}>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+                            <h2 className="text-xl font-display font-bold text-white">
+                                {activeKPI === "ctr" && "Click-Through Rate Analysis"}
+                                {activeKPI === "cpc" && "Cost Per Click Analysis"}
+                                {activeKPI === "cpa" && "Cost Per Acquisition Analysis"}
+                                {activeKPI === "roas" && "Return on Ad Spend Analysis"}
+                            </h2>
+                            <button onClick={() => setActiveKPI(null)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="text-center mb-6">
+                                <p className="text-5xl font-display font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                                    {activeKPI === "ctr" && `${totals.ctr.toFixed(2)}%`}
+                                    {activeKPI === "cpc" && `Rs.${totals.avgCpc.toFixed(0)}`}
+                                    {activeKPI === "cpa" && `Rs.${(totals.cost / totals.conversions).toFixed(0)}`}
+                                    {activeKPI === "roas" && `${avgROAS.toFixed(2)}x`}
+                                </p>
+                            </div>
+                            <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
+                                <h3 className="text-sm font-semibold text-white mb-3">Key Insights</h3>
+                                <ul className="space-y-2 text-sm text-gray-300">
+                                    {activeKPI === "ctr" && (
+                                        <>
+                                            <li>- Average CTR of {totals.ctr.toFixed(2)}% is above industry average</li>
+                                            <li>- Best performer: {topPerformers[0]?.name} at {topPerformers[0]?.ctr.toFixed(2)}%</li>
+                                            <li>- {campaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
+                                        </>
+                                    )}
+                                    {activeKPI === "cpc" && (
+                                        <>
+                                            <li>- Average CPC of Rs.{totals.avgCpc.toFixed(0)} across {campaigns.length} campaigns</li>
+                                            <li>- Total clicks: {totals.clicks.toLocaleString()}</li>
+                                            <li>- Consider bid adjustments for high CPC campaigns</li>
+                                        </>
+                                    )}
+                                    {activeKPI === "cpa" && (
+                                        <>
+                                            <li>- Average CPA: Rs.{(totals.cost / totals.conversions).toFixed(0)} per conversion</li>
+                                            <li>- Total conversions: {totals.conversions.toLocaleString()}</li>
+                                            <li>- {campaigns.filter(c => c.conversionRate > 50).length} high-converting campaigns</li>
+                                        </>
+                                    )}
+                                    {activeKPI === "roas" && (
+                                        <>
+                                            <li>- Average ROAS: {avgROAS.toFixed(2)}x return on ad spend</li>
+                                            <li>- {campaigns.filter(c => c.conversions > 200).length} campaigns with 200+ conversions</li>
+                                            <li>- Total ad spend: {formatCurrency(totals.cost)}</li>
+                                        </>
+                                    )}
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-white mb-3">Top 5 Campaigns</h3>
+                                <div className="space-y-2">
+                                    {topPerformers.slice(0, 5).map((camp, i) => (
+                                        <div key={camp.id} className="flex items-center gap-3">
+                                            <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                            <span className="text-sm text-gray-300 flex-1 truncate">{camp.name}</span>
+                                            <span className="text-sm font-medium text-white">
+                                                {activeKPI === "ctr" ? `${camp.ctr.toFixed(2)}%` :
+                                                    activeKPI === "cpc" ? `Rs.${camp.avgCpc.toFixed(0)}` :
+                                                        activeKPI === "cpa" ? `Rs.${(camp.cost / Math.max(camp.conversions, 1)).toFixed(0)}` :
+                                                            `${(camp.conversions * 175 / camp.cost).toFixed(2)}x`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Command Palette */}
             <CommandPalette

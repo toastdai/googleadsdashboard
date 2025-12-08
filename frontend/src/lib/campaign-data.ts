@@ -22,6 +22,16 @@ export interface Campaign {
     conversionRate: number;
     searchImprShare: number | null;
     searchTopIS: number | null;
+    // Kelkoo metrics (for KL campaigns)
+    isKelkoo?: boolean;
+    kelkooLeads?: number;
+    kelkooRevenue?: number; // EUR
+    kelkooRevenueInr?: number; // INR
+    kelkooSales?: number;
+    kelkooSaleValue?: number; // EUR
+    kelkooSaleValueInr?: number; // INR
+    actualROAS?: number;
+    profitability?: number; // Revenue - Cost
 }
 
 // Parse percentage strings like "17.88%" to number
@@ -600,4 +610,79 @@ export const formatNumber = (value: number): string => {
         return `${(value / 1000).toFixed(1)}K`;
     }
     return value.toFixed(0);
+};
+
+// Kelkoo data integration for KL campaigns
+// Total Kelkoo data for Oct 1-31, 2025
+const kelkooTotals = {
+    clicks: 5252,
+    leads: 4651,
+    revenueEur: 4158.34,
+    sales: 427,
+    saleValueEur: 53035.42,
+};
+
+const EUR_TO_INR = 89.5;
+
+// Enrich campaigns with Kelkoo data
+export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
+    // Check if campaign ends with KL (case insensitive)
+    const isKelkoo = campaign.name.toLowerCase().endsWith("-kl");
+
+    if (!isKelkoo) {
+        return { ...campaign, isKelkoo: false };
+    }
+
+    // Calculate KL campaigns total clicks for proportional distribution
+    const klCampaigns = campaigns.filter(c => c.name.toLowerCase().endsWith("-kl"));
+    const totalKLClicks = klCampaigns.reduce((sum, c) => sum + c.clicks, 0);
+
+    // Calculate proportional share based on clicks
+    const clickRatio = totalKLClicks > 0 ? campaign.clicks / totalKLClicks : 0;
+
+    const kelkooLeads = Math.round(kelkooTotals.leads * clickRatio);
+    const kelkooRevenue = Math.round(kelkooTotals.revenueEur * clickRatio * 100) / 100;
+    const kelkooSales = Math.round(kelkooTotals.sales * clickRatio);
+    const kelkooSaleValue = Math.round(kelkooTotals.saleValueEur * clickRatio * 100) / 100;
+
+    const kelkooRevenueInr = Math.round(kelkooRevenue * EUR_TO_INR * 100) / 100;
+    const kelkooSaleValueInr = Math.round(kelkooSaleValue * EUR_TO_INR * 100) / 100;
+
+    // Calculate actual ROAS: (Total Revenue in INR) / (Cost in INR)
+    const totalRevenueInr = kelkooRevenueInr + kelkooSaleValueInr;
+    const actualROAS = campaign.cost > 0 ? Math.round((totalRevenueInr / campaign.cost) * 100) / 100 : 0;
+
+    // Calculate profitability
+    const profitability = Math.round((totalRevenueInr - campaign.cost) * 100) / 100;
+
+    return {
+        ...campaign,
+        isKelkoo: true,
+        kelkooLeads,
+        kelkooRevenue,
+        kelkooRevenueInr,
+        kelkooSales,
+        kelkooSaleValue,
+        kelkooSaleValueInr,
+        actualROAS,
+        profitability,
+    };
+}).sort((a, b) => {
+    // Sort KL campaigns first
+    if (a.isKelkoo && !b.isKelkoo) return -1;
+    if (!a.isKelkoo && b.isKelkoo) return 1;
+    // Then sort by cost (highest first)
+    return (b.cost || 0) - (a.cost || 0);
+});
+
+// Kelkoo totals for KL campaigns
+export const kelkooAggregates = {
+    totalLeads: kelkooTotals.leads,
+    totalRevenueEur: kelkooTotals.revenueEur,
+    totalRevenueInr: Math.round(kelkooTotals.revenueEur * EUR_TO_INR * 100) / 100,
+    totalSales: kelkooTotals.sales,
+    totalSaleValueEur: kelkooTotals.saleValueEur,
+    totalSaleValueInr: Math.round(kelkooTotals.saleValueEur * EUR_TO_INR * 100) / 100,
+    conversionRate: 9.18,
+    klCampaignCount: campaigns.filter(c => c.name.toLowerCase().endsWith("-kl")).length,
 };

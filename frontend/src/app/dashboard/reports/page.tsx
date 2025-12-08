@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { TrendingUp, AreaChart, BarChart3, PieChart } from "lucide-react";
 import { MetricsLineChart, MetricsAreaChart, MetricsBarChart, MetricsPieChart, ChartSkeleton } from "@/components/charts";
 import html2canvas from "html2canvas";
 
@@ -15,13 +16,18 @@ const allMetrics = [
     { key: "cpa", name: "CPA", color: "#ef4444" },
     { key: "roas", name: "ROAS", color: "#14b8a6" },
     { key: "conversion_value", name: "Conv. Value", color: "#6366f1" },
+    { key: "avg_position", name: "Avg Position", color: "#a855f7" },
+    { key: "search_impression_share", name: "Search Impr. Share", color: "#0ea5e9" },
+    { key: "cost_per_conversion", name: "Cost/Conversion", color: "#dc2626" },
+    { key: "kelkoo_leads", name: "Kelkoo Leads", color: "#3b82f6" },
+    { key: "kelkoo_revenue", name: "Kelkoo Revenue", color: "#10b981" },
 ];
 
 const chartTypes = [
-    { id: "line", name: "Line Chart", icon: "📈" },
-    { id: "area", name: "Area Chart", icon: "📊" },
-    { id: "bar", name: "Bar Chart", icon: "📉" },
-    { id: "pie", name: "Pie Chart", icon: "🥧" },
+    { id: "line", name: "Line Chart", Icon: TrendingUp },
+    { id: "area", name: "Area Chart", Icon: AreaChart },
+    { id: "bar", name: "Bar Chart", Icon: BarChart3 },
+    { id: "pie", name: "Pie Chart", Icon: PieChart },
 ];
 
 const datePresets = [
@@ -29,6 +35,21 @@ const datePresets = [
     { id: "14d", name: "Last 14 days", days: 14 },
     { id: "30d", name: "Last 30 days", days: 30 },
     { id: "90d", name: "Last 90 days", days: 90 },
+    { id: "custom", name: "Custom Range", days: 0 },
+];
+
+const aggregationModes = [
+    { id: "daily", name: "Daily" },
+    { id: "weekly", name: "Weekly" },
+    { id: "monthly", name: "Monthly" },
+];
+
+const reportTemplates = [
+    { id: "performance", name: "Performance Overview", metrics: ["clicks", "conversions", "cost"], chart: "area" },
+    { id: "efficiency", name: "Cost Efficiency", metrics: ["cpc", "cpa", "roas"], chart: "line" },
+    { id: "traffic", name: "Traffic Analysis", metrics: ["impressions", "clicks", "ctr"], chart: "bar" },
+    { id: "kelkoo", name: "Kelkoo Revenue", metrics: ["kelkoo_leads", "kelkoo_revenue", "cost"], chart: "area" },
+    { id: "conversion", name: "Conversion Funnel", metrics: ["clicks", "conversions", "conversion_value"], chart: "bar" },
 ];
 
 // Generate mock data
@@ -50,6 +71,12 @@ function generateData(days: number, metrics: string[]) {
         row.cpa = row.conversions > 0 ? parseFloat((row.cost / row.conversions).toFixed(2)) : 0;
         row.roas = parseFloat((3 + Math.random() * 3).toFixed(2));
         row.conversion_value = Math.round(row.conversions * (500 + Math.random() * 300));
+        // New metrics
+        row.avg_position = parseFloat((1.5 + Math.random() * 2).toFixed(1));
+        row.search_impression_share = parseFloat((40 + Math.random() * 40).toFixed(1));
+        row.cost_per_conversion = row.conversions > 0 ? parseFloat((row.cost / row.conversions).toFixed(2)) : 0;
+        row.kelkoo_leads = Math.round(row.conversions * (0.3 + Math.random() * 0.2));
+        row.kelkoo_revenue = Math.round(row.kelkoo_leads * (80 + Math.random() * 40));
 
         data.push(row);
     }
@@ -63,6 +90,10 @@ export default function ReportsPage() {
     const [data, setData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const chartRef = useRef<HTMLDivElement>(null);
+    const [aggregation, setAggregation] = useState("daily");
+    const [showComparison, setShowComparison] = useState(false);
+    const [showDataLabels, setShowDataLabels] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
     useEffect(() => {
         setIsLoading(true);
@@ -143,6 +174,89 @@ export default function ReportsPage() {
 
             {/* Configuration Panel */}
             <div className="bg-card rounded-2xl border border-border p-6 space-y-6">
+                {/* Quick Templates */}
+                <div>
+                    <label className="block text-sm font-medium mb-3">Report Templates</label>
+                    <div className="flex flex-wrap gap-2">
+                        {reportTemplates.map((template) => (
+                            <button
+                                key={template.id}
+                                onClick={() => {
+                                    setSelectedTemplate(template.id);
+                                    setSelectedMetrics(template.metrics);
+                                    setChartType(template.chart);
+                                }}
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${selectedTemplate === template.id
+                                    ? "bg-gradient-to-r from-purple-500 to-cyan-500 text-white"
+                                    : "bg-muted hover:bg-muted/80"
+                                    }`}
+                            >
+                                {template.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Advanced Options Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Aggregation */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Aggregation</label>
+                        <div className="flex gap-1">
+                            {aggregationModes.map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => setAggregation(mode.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${aggregation === mode.id
+                                        ? "bg-primary-500 text-white"
+                                        : "bg-muted hover:bg-muted/80"
+                                        }`}
+                                >
+                                    {mode.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    {/* Toggle Options */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Display Options</label>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowComparison(!showComparison)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${showComparison
+                                    ? "bg-emerald-500 text-white"
+                                    : "bg-muted hover:bg-muted/80"
+                                    }`}
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                Compare Period
+                            </button>
+                            <button
+                                onClick={() => setShowDataLabels(!showDataLabels)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${showDataLabels
+                                    ? "bg-cyan-500 text-white"
+                                    : "bg-muted hover:bg-muted/80"
+                                    }`}
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                Data Labels
+                            </button>
+                        </div>
+                    </div>
+                    {/* Metrics Count */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Active Metrics</label>
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-primary-400">{selectedMetrics.length}</span>
+                            <span className="text-sm text-muted-foreground">of {allMetrics.length} available</span>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Chart Type */}
                 <div>
                     <label className="block text-sm font-medium mb-3">Chart Type</label>
@@ -151,12 +265,12 @@ export default function ReportsPage() {
                             <button
                                 key={type.id}
                                 onClick={() => setChartType(type.id)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${chartType === type.id
-                                        ? "bg-primary-500 text-white"
-                                        : "bg-muted hover:bg-muted/80"
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${chartType === type.id
+                                    ? "bg-primary-500 text-white"
+                                    : "bg-muted hover:bg-muted/80"
                                     }`}
                             >
-                                {type.icon} {type.name}
+                                <type.Icon className="w-4 h-4" /> {type.name}
                             </button>
                         ))}
                     </div>
@@ -171,8 +285,8 @@ export default function ReportsPage() {
                                 key={preset.id}
                                 onClick={() => setDateRange(preset.id)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${dateRange === preset.id
-                                        ? "bg-primary-500 text-white"
-                                        : "bg-muted hover:bg-muted/80"
+                                    ? "bg-primary-500 text-white"
+                                    : "bg-muted hover:bg-muted/80"
                                     }`}
                             >
                                 {preset.name}
@@ -190,8 +304,8 @@ export default function ReportsPage() {
                                 key={metric.key}
                                 onClick={() => toggleMetric(metric.key)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 ${selectedMetrics.includes(metric.key)
-                                        ? "border-transparent text-white"
-                                        : "border-transparent bg-muted hover:bg-muted/80"
+                                    ? "border-transparent text-white"
+                                    : "border-transparent bg-muted hover:bg-muted/80"
                                     }`}
                                 style={{
                                     backgroundColor: selectedMetrics.includes(metric.key) ? metric.color : undefined,

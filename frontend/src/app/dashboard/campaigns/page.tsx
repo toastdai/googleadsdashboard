@@ -19,16 +19,25 @@ interface Campaign {
     roas: number;
     budget: number;
     spend_rate: number;
+    optimizationScore: number;
+    budgetType: string;
+    network: string;
+    labels: string[];
+    lastModified: string;
+    searchImprShare: number;
+    qualityScore: number;
 }
 
-// Mock campaigns data
+// Mock campaigns data with enhanced fields
 const mockCampaigns: Campaign[] = [
-    { id: "1", name: "Brand - Search", status: "ENABLED", type: "SEARCH", impressions: 523456, clicks: 18234, cost: 52345.67, conversions: 312, ctr: 3.48, cpc: 2.87, cpa: 167.77, roas: 5.97, budget: 60000, spend_rate: 87 },
-    { id: "2", name: "Non-Brand - Performance Max", status: "ENABLED", type: "PERFORMANCE_MAX", impressions: 345678, clicks: 12456, cost: 45678.90, conversions: 245, ctr: 3.60, cpc: 3.67, cpa: 186.44, roas: 5.13, budget: 50000, spend_rate: 91 },
-    { id: "3", name: "Shopping - Products", status: "ENABLED", type: "SHOPPING", impressions: 234567, clicks: 9876, cost: 34567.89, conversions: 198, ctr: 4.21, cpc: 3.50, cpa: 174.59, roas: 4.54, budget: 40000, spend_rate: 86 },
-    { id: "4", name: "Display - Remarketing", status: "ENABLED", type: "DISPLAY", impressions: 142081, clicks: 4668, cost: 23456.78, conversions: 137, ctr: 3.29, cpc: 5.02, cpa: 171.22, roas: 3.65, budget: 30000, spend_rate: 78 },
-    { id: "5", name: "Video - YouTube Brand", status: "PAUSED", type: "VIDEO", impressions: 89234, clicks: 2345, cost: 12345.67, conversions: 45, ctr: 2.63, cpc: 5.27, cpa: 274.35, roas: 2.12, budget: 20000, spend_rate: 62 },
-    { id: "6", name: "Display - New Users", status: "ENABLED", type: "DISPLAY", impressions: 234567, clicks: 5678, cost: 18234.56, conversions: 89, ctr: 2.42, cpc: 3.21, cpa: 204.88, roas: 3.24, budget: 25000, spend_rate: 73 },
+    { id: "1", name: "Brand - Search", status: "ENABLED", type: "SEARCH", impressions: 523456, clicks: 18234, cost: 52345.67, conversions: 312, ctr: 3.48, cpc: 2.87, cpa: 167.77, roas: 5.97, budget: 60000, spend_rate: 87, optimizationScore: 94, budgetType: "Daily", network: "Search", labels: ["Brand", "High Priority"], lastModified: "2025-10-30", searchImprShare: 78.5, qualityScore: 9 },
+    { id: "2", name: "Non-Brand - Performance Max", status: "ENABLED", type: "PERFORMANCE_MAX", impressions: 345678, clicks: 12456, cost: 45678.90, conversions: 245, ctr: 3.60, cpc: 3.67, cpa: 186.44, roas: 5.13, budget: 50000, spend_rate: 91, optimizationScore: 82, budgetType: "Daily", network: "All", labels: ["Acquisition"], lastModified: "2025-10-29", searchImprShare: 45.2, qualityScore: 7 },
+    { id: "3", name: "Shopping - Products", status: "ENABLED", type: "SHOPPING", impressions: 234567, clicks: 9876, cost: 34567.89, conversions: 198, ctr: 4.21, cpc: 3.50, cpa: 174.59, roas: 4.54, budget: 40000, spend_rate: 86, optimizationScore: 88, budgetType: "Campaign Total", network: "Shopping", labels: ["Products", "Q4"], lastModified: "2025-10-28", searchImprShare: 62.1, qualityScore: 8 },
+    { id: "4", name: "Display - Remarketing", status: "ENABLED", type: "DISPLAY", impressions: 142081, clicks: 4668, cost: 23456.78, conversions: 137, ctr: 3.29, cpc: 5.02, cpa: 171.22, roas: 3.65, budget: 30000, spend_rate: 78, optimizationScore: 75, budgetType: "Daily", network: "Display", labels: ["Retargeting"], lastModified: "2025-10-27", searchImprShare: 0, qualityScore: 6 },
+    { id: "5", name: "Video - YouTube Brand", status: "PAUSED", type: "VIDEO", impressions: 89234, clicks: 2345, cost: 12345.67, conversions: 45, ctr: 2.63, cpc: 5.27, cpa: 274.35, roas: 2.12, budget: 20000, spend_rate: 62, optimizationScore: 65, budgetType: "Daily", network: "YouTube", labels: ["Awareness"], lastModified: "2025-10-15", searchImprShare: 0, qualityScore: 5 },
+    { id: "6", name: "Display - New Users", status: "ENABLED", type: "DISPLAY", impressions: 234567, clicks: 5678, cost: 18234.56, conversions: 89, ctr: 2.42, cpc: 3.21, cpa: 204.88, roas: 3.24, budget: 25000, spend_rate: 73, optimizationScore: 71, budgetType: "Daily", network: "Display", labels: ["Prospecting"], lastModified: "2025-10-26", searchImprShare: 0, qualityScore: 6 },
+    { id: "7", name: "PottersCookShop-UK-KL", status: "ENABLED", type: "SHOPPING", impressions: 156789, clicks: 4523, cost: 28456.78, conversions: 156, ctr: 2.88, cpc: 6.29, cpa: 182.42, roas: 4.12, budget: 35000, spend_rate: 81, optimizationScore: 79, budgetType: "Daily", network: "Shopping", labels: ["Kelkoo", "UK"], lastModified: "2025-10-30", searchImprShare: 55.3, qualityScore: 7 },
+    { id: "8", name: "VidaXL-UK-KL", status: "ENABLED", type: "SHOPPING", impressions: 234567, clicks: 6789, cost: 42345.67, conversions: 234, ctr: 2.89, cpc: 6.24, cpa: 181.01, roas: 4.87, budget: 50000, spend_rate: 85, optimizationScore: 83, budgetType: "Daily", network: "Shopping", labels: ["Kelkoo", "UK"], lastModified: "2025-10-30", searchImprShare: 61.2, qualityScore: 8 },
 ];
 
 // Generate campaign performance data
@@ -74,7 +83,7 @@ export default function CampaignsPage() {
         return true;
     });
 
-    const campaignTypes = [...new Set(campaigns.map((c) => c.type))];
+    const campaignTypes = Array.from(new Set(campaigns.map((c) => c.type)));
 
     const columns = [
         {
@@ -146,6 +155,54 @@ export default function CampaignsPage() {
                     <p className="text-muted-foreground mt-1">
                         Manage and analyze your Google Ads campaigns
                     </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button className="btn-secondary text-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        New Campaign
+                    </button>
+                    <button className="btn-secondary text-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Import
+                    </button>
+                    <button className="btn-primary text-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export All
+                    </button>
+                </div>
+            </div>
+
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="bg-card rounded-xl border border-border p-4 text-center">
+                    <p className="text-2xl font-bold text-primary-500">{filteredCampaigns.length}</p>
+                    <p className="text-xs text-muted-foreground">Total Campaigns</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 text-center">
+                    <p className="text-2xl font-bold text-success-500">{filteredCampaigns.filter(c => c.status === "ENABLED").length}</p>
+                    <p className="text-xs text-muted-foreground">Active</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 text-center">
+                    <p className="text-2xl font-bold text-warning-500">Rs.{(filteredCampaigns.reduce((sum, c) => sum + c.cost, 0) / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-muted-foreground">Total Spend</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Conversions</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 text-center">
+                    <p className="text-2xl font-bold text-cyan-500">{(filteredCampaigns.reduce((sum, c) => sum + c.roas, 0) / filteredCampaigns.length).toFixed(2)}x</p>
+                    <p className="text-xs text-muted-foreground">Avg ROAS</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 text-center">
+                    <p className="text-2xl font-bold text-purple-500">{Math.round(filteredCampaigns.reduce((sum, c) => sum + c.optimizationScore, 0) / filteredCampaigns.length)}%</p>
+                    <p className="text-xs text-muted-foreground">Avg Opt. Score</p>
                 </div>
             </div>
 
