@@ -627,24 +627,24 @@ export const formatNumber = (value: number): string => {
 };
 
 // Kelkoo data integration for KL campaigns
-// Total Kelkoo data for Oct 1-31, 2025 (CORRECTED to match actual Kelkoo dashboard)
+// Total Kelkoo data for Oct 1-31, 2025 - NOW USES LIVE API DATA ONLY
 const kelkooTotals = {
-    clicks: 5252,
-    leads: 4507,  // Corrected from 4651 to match screenshot
-    revenueEur: 3974.21,  // Corrected from 4158.34 to match screenshot
-    sales: 417,  // Corrected from 427 to match screenshot
-    saleValueEur: 51393.35,  // Corrected from 53035.42 to match screenshot
-    cpc: 0.88,  // Added from screenshot
-    vpl: 11.4,  // Value per lead from screenshot
+    clicks: 0,
+    leads: 0,
+    revenueEur: 0,
+    sales: 0,
+    saleValueEur: 0,
+    cpc: 0,
+    vpl: 0,
 };
 
 // Admedia data integration for AM campaigns
 // Total Admedia data for Oct 1-31, 2025
 const admediaTotals = {
-    clicks: 2535,
-    leads: 1469,
-    conversions: 587,
-    earningsUsd: 4823.45,
+    clicks: 0,
+    leads: 0,
+    conversions: 0,
+    earningsUsd: 0,
 };
 
 const EUR_TO_INR = 89.5;
@@ -841,7 +841,7 @@ export const admediaAggregates = {
     totalConversions: admediaTotals.conversions,
     totalEarningsUsd: admediaTotals.earningsUsd,
     totalEarningsInr: Math.round(admediaTotals.earningsUsd * USD_TO_INR * 100) / 100,
-    conversionRate: (admediaTotals.conversions / admediaTotals.leads) * 100,
+    conversionRate: admediaTotals.leads > 0 ? (admediaTotals.conversions / admediaTotals.leads) * 100 : 0,
     amCampaignCount: campaigns.filter(c => c.name.toLowerCase().endsWith("-am")).length,
 };
 

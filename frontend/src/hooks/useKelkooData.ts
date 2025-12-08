@@ -62,10 +62,14 @@ export function useKelkooData(
     }, [startDate, endDate]);
 
     useEffect(() => {
-        fetchData();
+        void fetchData();
     }, [fetchData]);
 
-    return { data, loading, error, isFallback, refetch: fetchData };
+    const refetch = () => {
+        void fetchData();
+    };
+
+    return { data, loading, error, isFallback, refetch };
 }
 
 // Helper to calculate derived metrics

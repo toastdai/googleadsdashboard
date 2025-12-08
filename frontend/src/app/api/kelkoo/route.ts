@@ -67,23 +67,9 @@ export async function GET(request: Request) {
             {
                 success: false,
                 error: "Kelkoo API token not configured",
-                // Return fallback data when token is not configured
-                data: {
-                    clickCount: 5252,
-                    clickValidCount: 5101,
-                    leadCount: 4507,
-                    trackedLeadCount: 4507,
-                    leadEstimatedRevenueInEur: 3974.21,
-                    leadRejectedCount: 450,
-                    saleCount: 417,
-                    saleValueInEur: 51393.35,
-                    monetizedClickPercentage: 97.12,
-                    crPercentage: 9.25,
-                    valuePerLeadInEur: 11.4,
-                },
-                isFallback: true
+                isFallback: false,
             },
-            { status: 200 }
+            { status: 401 }
         );
     }
 
@@ -92,6 +78,7 @@ export async function GET(request: Request) {
         const response = await fetch(url, {
             headers: {
                 "Authorization": `Bearer ${token}`,
+                "Accept": "text/tab-separated-values",
                 "Accept-Encoding": "gzip",
             },
             next: { revalidate: 3600 }, // Cache for 1 hour

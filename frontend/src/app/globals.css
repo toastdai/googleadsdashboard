@@ -143,15 +143,32 @@
   }
 
   .data-table th {
-    @apply px-4 py-3 text-left font-medium text-muted-foreground bg-muted/50;
+    @apply px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground bg-muted/50 uppercase tracking-wider whitespace-nowrap;
   }
 
   .data-table td {
-    @apply px-4 py-3 border-t border-border;
+    @apply px-3 py-2.5 border-t border-border/50 whitespace-nowrap;
   }
 
   .data-table tr:hover td {
     @apply bg-muted/30;
+  }
+  
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thumb-gray-700::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+  
+  .scrollbar-thumb-gray-700::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-gray-700;
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    @apply bg-transparent;
   }
 }
 

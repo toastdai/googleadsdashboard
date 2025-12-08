@@ -7,10 +7,10 @@
  * API Key: 2fb42a467452b41e946c29860736afb6
  */
 
-// Admedia API configuration
+// Admedia API configuration (values must be provided via environment)
 const ADMEDIA_API_BASE = "https://api.admedia.com/publisher/v1";
-const ADMEDIA_AID = process.env.NEXT_PUBLIC_ADMEDIA_AID || "122250";
-const ADMEDIA_API_KEY = process.env.NEXT_PUBLIC_ADMEDIA_API_KEY || "2fb42a467452b41e946c29860736afb6";
+const ADMEDIA_AID = process.env.NEXT_PUBLIC_ADMEDIA_AID ?? "";
+const ADMEDIA_API_KEY = process.env.NEXT_PUBLIC_ADMEDIA_API_KEY ?? "";
 
 export interface AdmediaMetrics {
     clicks: number;
@@ -106,15 +106,25 @@ function parseAdmediaResponse(json: Record<string, unknown>): AdmediaMetrics | n
         const data = json?.data as Record<string, unknown> | undefined;
         if (!data) return null;
 
+        const toNumber = (value: unknown): number => {
+            if (value == null) return 0;
+            if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+            if (typeof value === "string") {
+                const parsed = Number.parseFloat(value);
+                return Number.isFinite(parsed) ? parsed : 0;
+            }
+            return 0;
+        };
+
         return {
-            clicks: Number.parseInt(String(data.clicks)) || 0,
-            leads: Number.parseInt(String(data.leads)) || 0,
-            conversions: Number.parseInt(String(data.conversions)) || 0,
-            earnings: Number.parseFloat(String(data.earnings)) || 0,
-            earningsInr: (Number.parseFloat(String(data.earnings)) || 0) * USD_TO_INR,
-            cpc: Number.parseFloat(String(data.cpc)) || 0,
-            cpl: Number.parseFloat(String(data.cpl)) || 0,
-            conversionRate: Number.parseFloat(String(data.conversion_rate)) || 0,
+            clicks: toNumber(data.clicks),
+            leads: toNumber(data.leads),
+            conversions: toNumber(data.conversions),
+            earnings: toNumber(data.earnings),
+            earningsInr: toNumber(data.earnings) * USD_TO_INR,
+            cpc: toNumber(data.cpc),
+            cpl: toNumber(data.cpl),
+            conversionRate: toNumber(data.conversion_rate),
         };
     } catch (error) {
         console.error("Error parsing Admedia response:", error);
