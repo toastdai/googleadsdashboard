@@ -1,96 +1,189 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/data-table";
-import { MetricsLineChart, MetricsBarChart, ChartSkeleton } from "@/components/charts";
+import { MetricsLineChart, ChartSkeleton } from "@/components/charts";
+import { campaigns as realCampaigns, Campaign } from "@/lib/campaign-data";
+import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooData";
+import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
+import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
 
-interface Campaign {
-    id: string;
-    name: string;
-    status: string;
-    type: string;
-    impressions: number;
-    clicks: number;
-    cost: number;
-    conversions: number;
-    ctr: number;
-    cpc: number;
-    cpa: number;
-    roas: number;
-    budget: number;
-    spend_rate: number;
-    optimizationScore: number;
-    budgetType: string;
-    network: string;
-    labels: string[];
-    lastModified: string;
-    searchImprShare: number;
-    qualityScore: number;
-}
+// Helper to detect network from campaign name
+const detectNetwork = (name: string) => {
+    const nameLower = name.toLowerCase();
+    return {
+        isKelkoo: /[\s-]+kl$/i.test(nameLower),
+        isAdmedia: /[\s-]+am$/i.test(nameLower),
+        isMaxBounty: /[\s-]+mb$/i.test(nameLower),
+    };
+};
 
-// Mock campaigns data with enhanced fields
-const mockCampaigns: Campaign[] = [
-    { id: "1", name: "Brand - Search", status: "ENABLED", type: "SEARCH", impressions: 523456, clicks: 18234, cost: 52345.67, conversions: 312, ctr: 3.48, cpc: 2.87, cpa: 167.77, roas: 5.97, budget: 60000, spend_rate: 87, optimizationScore: 94, budgetType: "Daily", network: "Search", labels: ["Brand", "High Priority"], lastModified: "2025-10-30", searchImprShare: 78.5, qualityScore: 9 },
-    { id: "2", name: "Non-Brand - Performance Max", status: "ENABLED", type: "PERFORMANCE_MAX", impressions: 345678, clicks: 12456, cost: 45678.90, conversions: 245, ctr: 3.60, cpc: 3.67, cpa: 186.44, roas: 5.13, budget: 50000, spend_rate: 91, optimizationScore: 82, budgetType: "Daily", network: "All", labels: ["Acquisition"], lastModified: "2025-10-29", searchImprShare: 45.2, qualityScore: 7 },
-    { id: "3", name: "Shopping - Products", status: "ENABLED", type: "SHOPPING", impressions: 234567, clicks: 9876, cost: 34567.89, conversions: 198, ctr: 4.21, cpc: 3.50, cpa: 174.59, roas: 4.54, budget: 40000, spend_rate: 86, optimizationScore: 88, budgetType: "Campaign Total", network: "Shopping", labels: ["Products", "Q4"], lastModified: "2025-10-28", searchImprShare: 62.1, qualityScore: 8 },
-    { id: "4", name: "Display - Remarketing", status: "ENABLED", type: "DISPLAY", impressions: 142081, clicks: 4668, cost: 23456.78, conversions: 137, ctr: 3.29, cpc: 5.02, cpa: 171.22, roas: 3.65, budget: 30000, spend_rate: 78, optimizationScore: 75, budgetType: "Daily", network: "Display", labels: ["Retargeting"], lastModified: "2025-10-27", searchImprShare: 0, qualityScore: 6 },
-    { id: "5", name: "Video - YouTube Brand", status: "PAUSED", type: "VIDEO", impressions: 89234, clicks: 2345, cost: 12345.67, conversions: 45, ctr: 2.63, cpc: 5.27, cpa: 274.35, roas: 2.12, budget: 20000, spend_rate: 62, optimizationScore: 65, budgetType: "Daily", network: "YouTube", labels: ["Awareness"], lastModified: "2025-10-15", searchImprShare: 0, qualityScore: 5 },
-    { id: "6", name: "Display - New Users", status: "ENABLED", type: "DISPLAY", impressions: 234567, clicks: 5678, cost: 18234.56, conversions: 89, ctr: 2.42, cpc: 3.21, cpa: 204.88, roas: 3.24, budget: 25000, spend_rate: 73, optimizationScore: 71, budgetType: "Daily", network: "Display", labels: ["Prospecting"], lastModified: "2025-10-26", searchImprShare: 0, qualityScore: 6 },
-    { id: "7", name: "PottersCookShop-UK-KL", status: "ENABLED", type: "SHOPPING", impressions: 156789, clicks: 4523, cost: 28456.78, conversions: 156, ctr: 2.88, cpc: 6.29, cpa: 182.42, roas: 4.12, budget: 35000, spend_rate: 81, optimizationScore: 79, budgetType: "Daily", network: "Shopping", labels: ["Kelkoo", "UK"], lastModified: "2025-10-30", searchImprShare: 55.3, qualityScore: 7 },
-    { id: "8", name: "VidaXL-UK-KL", status: "ENABLED", type: "SHOPPING", impressions: 234567, clicks: 6789, cost: 42345.67, conversions: 234, ctr: 2.89, cpc: 6.24, cpa: 181.01, roas: 4.87, budget: 50000, spend_rate: 85, optimizationScore: 83, budgetType: "Daily", network: "Shopping", labels: ["Kelkoo", "UK"], lastModified: "2025-10-30", searchImprShare: 61.2, qualityScore: 8 },
-];
-
-// Generate campaign performance data
-function generateCampaignTrendData(days: number = 7) {
-    const data = [];
+// Generate campaign performance data based on real campaigns
+function generateCampaignTrendData(campaignData: Campaign[], days: number = 7) {
+    const data: { date: string; [key: string]: string | number }[] = [];
     const today = new Date();
+    const topCampaigns = [...campaignData]
+        .sort((a, b) => b.cost - a.cost)
+        .slice(0, 4);
+    
     for (let i = days - 1; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        data.push({
+        const dayData: { date: string; [key: string]: string | number } = {
             date: date.toISOString().split("T")[0],
-            "Brand - Search": Math.round(70000 + Math.random() * 20000),
-            "Non-Brand - Performance Max": Math.round(45000 + Math.random() * 15000),
-            "Shopping - Products": Math.round(30000 + Math.random() * 10000),
-            "Display - Remarketing": Math.round(18000 + Math.random() * 8000),
+        };
+        
+        topCampaigns.forEach(camp => {
+            // Generate variation based on campaign's actual impressions
+            const baseImpressions = camp.impressions / days;
+            dayData[camp.name] = Math.round(baseImpressions * (0.8 + Math.random() * 0.4));
         });
+        
+        data.push(dayData);
     }
-    return data;
+    return { data, topCampaigns };
+}
+
+// Extended campaign type for display
+interface DisplayCampaign extends Campaign {
+    roas: number;
+    spend_rate: number;
+    type: string;
+    network: string;
+    partnerRevenue?: number;
 }
 
 export default function CampaignsPage() {
-    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-    const [statusFilter, setStatusFilter] = useState<"all" | "ENABLED" | "PAUSED">("all");
+    const [selectedCampaign, setSelectedCampaign] = useState<DisplayCampaign | null>(null);
+    const [statusFilter, setStatusFilter] = useState<"all" | "Enabled" | "Paused">("all");
     const [typeFilter, setTypeFilter] = useState<string>("all");
-    const [trendData, setTrendData] = useState<any[]>([]);
+    const [networkFilter, setNetworkFilter] = useState<string>("all");
+
+    // Fetch partner data
+    const { data: kelkooData, loading: kelkooLoading, refetch: refetchKelkoo } = useKelkooData();
+    const { data: admediaData, loading: admediaLoading, refetch: refetchAdmedia } = useAdmediaData();
+    const { data: maxBountyData, loading: maxBountyLoading, refetch: refetchMaxBounty } = useMaxBountyData();
 
     useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            setCampaigns(mockCampaigns);
-            setTrendData(generateCampaignTrendData(7));
-            setIsLoading(false);
-        };
-        fetchData();
+        // Simulate initial load
+        const timer = setTimeout(() => setIsLoading(false), 500);
+        return () => clearTimeout(timer);
     }, []);
 
-    const filteredCampaigns = campaigns.filter((c) => {
+    // Enrich campaigns with partner data and computed fields
+    const enrichedCampaigns: DisplayCampaign[] = useMemo(() => {
+        // Calculate total clicks for each network
+        const totalKLClicks = realCampaigns.filter(c => detectNetwork(c.name).isKelkoo).reduce((sum, c) => sum + c.clicks, 0);
+        const totalAMClicks = realCampaigns.filter(c => detectNetwork(c.name).isAdmedia).reduce((sum, c) => sum + c.clicks, 0);
+        const totalMBClicks = realCampaigns.filter(c => detectNetwork(c.name).isMaxBounty).reduce((sum, c) => sum + c.clicks, 0);
+
+        return realCampaigns.map(camp => {
+            const network = detectNetwork(camp.name);
+            let partnerRevenue = 0;
+            let partnerLeads = 0;
+            let networkName = "Google Ads";
+
+            if (network.isKelkoo && kelkooData) {
+                const kelkooMetrics = calculateCampaignKelkooData(kelkooData, camp.clicks, totalKLClicks, camp.cost);
+                partnerRevenue = kelkooMetrics.kelkooRevenueInr || 0;
+                partnerLeads = kelkooMetrics.kelkooLeads || 0;
+                networkName = "Kelkoo";
+            } else if (network.isAdmedia && admediaData) {
+                const admediaMetrics = calculateCampaignAdmediaData(admediaData, camp.clicks, totalAMClicks, camp.cost);
+                partnerRevenue = admediaMetrics.admediaEarningsInr || 0;
+                partnerLeads = admediaMetrics.admediaLeads || 0;
+                networkName = "Admedia";
+            } else if (network.isMaxBounty && maxBountyData) {
+                const mbMetrics = calculateCampaignMaxBountyData(maxBountyData, camp.clicks, totalMBClicks, camp.cost);
+                partnerRevenue = mbMetrics.maxBountyEarningsInr || 0;
+                partnerLeads = mbMetrics.maxBountyLeads || 0;
+                networkName = "MaxBounty";
+            }
+
+            // Calculate ROAS
+            const roas = camp.cost > 0 ? partnerRevenue / camp.cost : 0;
+
+            // Calculate spend rate (budget utilization)
+            const spend_rate = camp.budget > 0 ? Math.min(100, (camp.cost / camp.budget) * 100) : 0;
+
+            // Determine campaign type from name
+            let type = "SEARCH";
+            const nameLower = camp.name.toLowerCase();
+            if (nameLower.includes("shopping") || nameLower.includes("shop")) type = "SHOPPING";
+            else if (nameLower.includes("display")) type = "DISPLAY";
+            else if (nameLower.includes("video") || nameLower.includes("youtube")) type = "VIDEO";
+            else if (nameLower.includes("pmax") || nameLower.includes("performance max")) type = "PERFORMANCE_MAX";
+
+            return {
+                ...camp,
+                roas,
+                spend_rate,
+                type,
+                network: networkName,
+                partnerRevenue,
+                isKelkoo: network.isKelkoo,
+                isAdmedia: network.isAdmedia,
+                isMaxBounty: network.isMaxBounty,
+                kelkooLeads: network.isKelkoo ? partnerLeads : undefined,
+                admediaLeads: network.isAdmedia ? partnerLeads : undefined,
+                maxBountyLeads: network.isMaxBounty ? partnerLeads : undefined,
+            };
+        });
+    }, [kelkooData, admediaData, maxBountyData]);
+
+    const filteredCampaigns = enrichedCampaigns.filter((c) => {
         if (statusFilter !== "all" && c.status !== statusFilter) return false;
         if (typeFilter !== "all" && c.type !== typeFilter) return false;
+        if (networkFilter !== "all") {
+            if (networkFilter === "kelkoo" && !c.isKelkoo) return false;
+            if (networkFilter === "admedia" && !c.isAdmedia) return false;
+            if (networkFilter === "maxbounty" && !c.isMaxBounty) return false;
+            if (networkFilter === "google" && (c.isKelkoo || c.isAdmedia || c.isMaxBounty)) return false;
+        }
         return true;
     });
 
-    const campaignTypes = Array.from(new Set(campaigns.map((c) => c.type)));
+    const campaignTypes = Array.from(new Set(enrichedCampaigns.map((c) => c.type)));
+    
+    // Campaign selection for comparison chart
+    const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
+    
+    // Generate trend data based on filters and selection
+    const { data: trendData, topCampaigns } = useMemo(() => {
+        // If specific campaigns are selected, use those; otherwise use filtered campaigns
+        const campaignsToChart = selectedCampaignIds.length > 0
+            ? filteredCampaigns.filter(c => selectedCampaignIds.includes(c.id))
+            : filteredCampaigns;
+        return generateCampaignTrendData(campaignsToChart, 7);
+    }, [filteredCampaigns, selectedCampaignIds]);
+    
+    // Toggle campaign selection
+    const toggleCampaignSelection = (campaignId: string) => {
+        setSelectedCampaignIds(prev => 
+            prev.includes(campaignId) 
+                ? prev.filter(id => id !== campaignId)
+                : [...prev, campaignId]
+        );
+    };
+    
+    // Clear campaign selection
+    const clearCampaignSelection = () => setSelectedCampaignIds([]);
+
+    const handleRefresh = () => {
+        setIsLoading(true);
+        refetchKelkoo();
+        refetchAdmedia();
+        refetchMaxBounty();
+        setTimeout(() => setIsLoading(false), 1000);
+    };
 
     const columns = [
         {
             key: "name",
             header: "Campaign",
             sortable: true,
-            render: (value: string, row: Campaign) => (
+            render: (value: string, row: DisplayCampaign) => (
                 <div>
                     <button
                         className="font-medium hover:text-primary-500 transition-colors text-left"
@@ -98,7 +191,12 @@ export default function CampaignsPage() {
                     >
                         {value}
                     </button>
-                    <div className="text-xs text-muted-foreground mt-0.5">{row.type}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">{row.type}</span>
+                        {row.isKelkoo && <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] rounded">KL</span>}
+                        {row.isAdmedia && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded">AM</span>}
+                        {row.isMaxBounty && <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 text-[10px] rounded">MB</span>}
+                    </div>
                 </div>
             ),
         },
@@ -106,9 +204,8 @@ export default function CampaignsPage() {
             key: "status",
             header: "Status",
             render: (value: string) => (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${value === "ENABLED" ? "bg-success-100 text-success-600" : "bg-muted text-muted-foreground"
-                    }`}>
-                    {value}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${value === "Enabled" ? "bg-success-100 text-success-600" : "bg-muted text-muted-foreground"}`}>
+                    {value.toUpperCase()}
                 </span>
             ),
         },
@@ -122,9 +219,9 @@ export default function CampaignsPage() {
             header: "ROAS",
             align: "right" as const,
             sortable: true,
-            render: (value: number) => (
-                <span className={`font-medium ${value >= 4 ? "text-success-500" : value >= 2 ? "text-foreground" : "text-warning-500"}`}>
-                    {value?.toFixed(2)}x
+            render: (value: number, row: DisplayCampaign) => (
+                <span className={`font-medium ${value >= 1 ? "text-success-500" : value > 0 ? "text-warning-500" : "text-muted-foreground"}`}>
+                    {value > 0 ? `${value.toFixed(2)}x` : "-"}
                 </span>
             ),
         },
@@ -132,7 +229,7 @@ export default function CampaignsPage() {
             key: "spend_rate",
             header: "Budget",
             align: "right" as const,
-            render: (value: number, row: Campaign) => (
+            render: (value: number) => (
                 <div className="flex items-center gap-2">
                     <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                         <div
@@ -140,11 +237,21 @@ export default function CampaignsPage() {
                             style={{ width: `${value}%` }}
                         />
                     </div>
-                    <span className="text-xs tabular-nums">{value}%</span>
+                    <span className="text-xs tabular-nums">{value.toFixed(0)}%</span>
                 </div>
             ),
         },
     ];
+
+    // Stats calculations
+    const totalSpend = filteredCampaigns.reduce((sum, c) => sum + c.cost, 0);
+    const totalConversions = filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0);
+    const avgRoas = filteredCampaigns.length > 0 
+        ? filteredCampaigns.reduce((sum, c) => sum + c.roas, 0) / filteredCampaigns.filter(c => c.roas > 0).length 
+        : 0;
+    const avgOptScore = filteredCampaigns.length > 0
+        ? filteredCampaigns.reduce((sum, c) => sum + c.optimizationScore, 0) / filteredCampaigns.length
+        : 0;
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -153,27 +260,24 @@ export default function CampaignsPage() {
                 <div>
                     <h1 className="text-2xl font-display font-bold">Campaigns</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage and analyze your Google Ads campaigns
+                        Real data from EFF24 Google Ads Account
+                        {(kelkooLoading || admediaLoading || maxBountyLoading) && 
+                            <span className="ml-2 text-cyan-400">(Loading partner data...)</span>
+                        }
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="btn-secondary text-sm">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <button className="btn-secondary text-sm" onClick={handleRefresh}>
+                        <svg className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        New Campaign
-                    </button>
-                    <button className="btn-secondary text-sm">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        Import
+                        Refresh
                     </button>
                     <button className="btn-primary text-sm">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
-                        Export All
+                        Export
                     </button>
                 </div>
             </div>
@@ -185,23 +289,23 @@ export default function CampaignsPage() {
                     <p className="text-xs text-muted-foreground">Total Campaigns</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-success-500">{filteredCampaigns.filter(c => c.status === "ENABLED").length}</p>
+                    <p className="text-2xl font-bold text-success-500">{filteredCampaigns.filter(c => c.status === "Enabled").length}</p>
                     <p className="text-xs text-muted-foreground">Active</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-warning-500">Rs.{(filteredCampaigns.reduce((sum, c) => sum + c.cost, 0) / 1000).toFixed(0)}K</p>
+                    <p className="text-2xl font-bold text-warning-500">₹{(totalSpend / 100000).toFixed(1)}L</p>
                     <p className="text-xs text-muted-foreground">Total Spend</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-foreground">{filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-foreground">{totalConversions.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Conversions</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-cyan-500">{(filteredCampaigns.reduce((sum, c) => sum + c.roas, 0) / filteredCampaigns.length).toFixed(2)}x</p>
+                    <p className={`text-2xl font-bold ${avgRoas >= 1 ? "text-cyan-500" : "text-red-400"}`}>{avgRoas > 0 ? avgRoas.toFixed(2) : "-"}x</p>
                     <p className="text-xs text-muted-foreground">Avg ROAS</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-purple-500">{Math.round(filteredCampaigns.reduce((sum, c) => sum + c.optimizationScore, 0) / filteredCampaigns.length)}%</p>
+                    <p className="text-2xl font-bold text-purple-500">{avgOptScore.toFixed(0)}%</p>
                     <p className="text-xs text-muted-foreground">Avg Opt. Score</p>
                 </div>
             </div>
@@ -209,20 +313,22 @@ export default function CampaignsPage() {
             {/* Filters */}
             <div className="flex flex-wrap gap-4 p-4 bg-card rounded-xl border border-border">
                 <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                    <label htmlFor="statusFilter" className="text-xs text-muted-foreground mb-1 block">Status</label>
                     <select
+                        id="statusFilter"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value as any)}
                         className="input py-2"
                     >
                         <option value="all">All Statuses</option>
-                        <option value="ENABLED">Enabled</option>
-                        <option value="PAUSED">Paused</option>
+                        <option value="Enabled">Enabled</option>
+                        <option value="Paused">Paused</option>
                     </select>
                 </div>
                 <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Campaign Type</label>
+                    <label htmlFor="typeFilter" className="text-xs text-muted-foreground mb-1 block">Campaign Type</label>
                     <select
+                        id="typeFilter"
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value)}
                         className="input py-2"
@@ -233,31 +339,100 @@ export default function CampaignsPage() {
                         ))}
                     </select>
                 </div>
-                <div className="flex-1" />
-                <div className="flex items-end">
-                    <button className="btn-primary">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Sync Data
-                    </button>
+                <div>
+                    <label htmlFor="networkFilter" className="text-xs text-muted-foreground mb-1 block">Partner Network</label>
+                    <select
+                        id="networkFilter"
+                        value={networkFilter}
+                        onChange={(e) => setNetworkFilter(e.target.value)}
+                        className="input py-2"
+                    >
+                        <option value="all">All Networks</option>
+                        <option value="google">Google Ads Only</option>
+                        <option value="kelkoo">Kelkoo (KL)</option>
+                        <option value="admedia">Admedia (AM)</option>
+                        <option value="maxbounty">MaxBounty (MB)</option>
+                    </select>
                 </div>
+                <div className="flex-1" />
+                <div className="flex items-end gap-2">
+                    <span className="text-xs text-muted-foreground">
+                        KL: {enrichedCampaigns.filter(c => c.isKelkoo).length} |
+                        AM: {enrichedCampaigns.filter(c => c.isAdmedia).length} |
+                        MB: {enrichedCampaigns.filter(c => c.isMaxBounty).length}
+                    </span>
+                </div>
+            </div>
+
+            {/* Campaign Comparison Selector */}
+            <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium">Select Campaigns for Comparison</h3>
+                    {selectedCampaignIds.length > 0 && (
+                        <button 
+                            onClick={clearCampaignSelection}
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            Clear Selection ({selectedCampaignIds.length})
+                        </button>
+                    )}
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                    {filteredCampaigns.slice(0, 20).map((camp) => (
+                        <button
+                            key={camp.id}
+                            onClick={() => toggleCampaignSelection(camp.id)}
+                            className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                                selectedCampaignIds.includes(camp.id)
+                                    ? "bg-primary-500 text-white border-primary-500"
+                                    : "bg-card border-border hover:border-primary-500/50"
+                            }`}
+                        >
+                            {camp.name.length > 30 ? camp.name.substring(0, 30) + "..." : camp.name}
+                            {camp.isKelkoo && <span className="ml-1 text-purple-300">KL</span>}
+                            {camp.isAdmedia && <span className="ml-1 text-amber-300">AM</span>}
+                            {camp.isMaxBounty && <span className="ml-1 text-rose-300">MB</span>}
+                        </button>
+                    ))}
+                    {filteredCampaigns.length > 20 && (
+                        <span className="px-3 py-1.5 text-xs text-muted-foreground">
+                            +{filteredCampaigns.length - 20} more campaigns
+                        </span>
+                    )}
+                </div>
+                {selectedCampaignIds.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                        Click campaigns to compare them. Shows top 4 by cost if none selected.
+                    </p>
+                )}
             </div>
 
             {/* Performance Trend Chart */}
             <div className="bg-card rounded-2xl border border-border p-6">
-                <h2 className="text-lg font-display font-semibold mb-4">Impressions by Campaign</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-display font-semibold">
+                        {selectedCampaignIds.length > 0 
+                            ? `Comparing ${selectedCampaignIds.length} Selected Campaign${selectedCampaignIds.length > 1 ? 's' : ''}`
+                            : `Top ${topCampaigns.length} Campaigns by Cost`}
+                    </h2>
+                    {selectedCampaignIds.length > 0 && (
+                        <span className="text-xs text-muted-foreground">Impressions over last 7 days</span>
+                    )}
+                </div>
                 {isLoading ? (
                     <ChartSkeleton height={300} />
+                ) : topCampaigns.length === 0 ? (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        No campaigns to display. Try adjusting your filters.
+                    </div>
                 ) : (
                     <MetricsLineChart
                         data={trendData}
-                        metrics={[
-                            { key: "Brand - Search", name: "Brand - Search", color: "#8b5cf6" },
-                            { key: "Non-Brand - Performance Max", name: "Performance Max", color: "#06b6d4" },
-                            { key: "Shopping - Products", name: "Shopping", color: "#22c55e" },
-                            { key: "Display - Remarketing", name: "Remarketing", color: "#f59e0b" },
-                        ]}
+                        metrics={topCampaigns.map((camp, i) => ({
+                            key: camp.name,
+                            name: camp.name.length > 25 ? camp.name.substring(0, 25) + "..." : camp.name,
+                            color: ["#8b5cf6", "#06b6d4", "#22c55e", "#f59e0b", "#ef4444", "#ec4899"][i % 6],
+                        }))}
                         height={300}
                     />
                 )}
@@ -268,8 +443,8 @@ export default function CampaignsPage() {
                 data={filteredCampaigns}
                 columns={columns}
                 title={`Campaigns (${filteredCampaigns.length})`}
-                searchKeys={["name", "type"]}
-                pageSize={10}
+                searchKeys={["name", "type", "account"]}
+                pageSize={15}
             />
 
             {/* Campaign Detail Modal */}
@@ -285,7 +460,19 @@ export default function CampaignsPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
-                        <h2 className="text-xl font-display font-bold mb-4">{selectedCampaign.name}</h2>
+                        <h2 className="text-xl font-display font-bold mb-2">{selectedCampaign.name}</h2>
+                        <p className="text-sm text-muted-foreground mb-4">Account: {selectedCampaign.account} | {selectedCampaign.bidStrategy}</p>
+                        
+                        {/* Network Badge */}
+                        <div className="flex gap-2 mb-4">
+                            {selectedCampaign.isKelkoo && <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded-lg">Kelkoo Partner</span>}
+                            {selectedCampaign.isAdmedia && <span className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-lg">Admedia Partner</span>}
+                            {selectedCampaign.isMaxBounty && <span className="px-2 py-1 bg-rose-500/20 text-rose-400 text-xs rounded-lg">MaxBounty Partner</span>}
+                            {!selectedCampaign.isKelkoo && !selectedCampaign.isAdmedia && !selectedCampaign.isMaxBounty && 
+                                <span className="px-2 py-1 bg-gray-500/20 text-gray-400 text-xs rounded-lg">Google Ads Only</span>
+                            }
+                        </div>
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                             <div className="p-4 bg-muted rounded-xl">
                                 <p className="text-xs text-muted-foreground">Impressions</p>
@@ -297,35 +484,59 @@ export default function CampaignsPage() {
                             </div>
                             <div className="p-4 bg-muted rounded-xl">
                                 <p className="text-xs text-muted-foreground">Cost</p>
-                                <p className="text-xl font-bold">Rs.{(selectedCampaign.cost / 1000).toFixed(1)}K</p>
+                                <p className="text-xl font-bold">₹{(selectedCampaign.cost / 1000).toFixed(1)}K</p>
                             </div>
                             <div className="p-4 bg-muted rounded-xl">
                                 <p className="text-xs text-muted-foreground">ROAS</p>
-                                <p className="text-xl font-bold text-success-500">{selectedCampaign.roas.toFixed(2)}x</p>
+                                <p className={`text-xl font-bold ${selectedCampaign.roas >= 1 ? "text-success-500" : "text-warning-500"}`}>
+                                    {selectedCampaign.roas > 0 ? `${selectedCampaign.roas.toFixed(2)}x` : "-"}
+                                </p>
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <div className="flex justify-between">
+
+                        {/* Partner Revenue if applicable */}
+                        {selectedCampaign.partnerRevenue && selectedCampaign.partnerRevenue > 0 && (
+                            <div className="p-4 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 rounded-xl border border-purple-500/20 mb-6">
+                                <p className="text-xs text-muted-foreground">Partner Revenue</p>
+                                <p className="text-2xl font-bold text-cyan-400">₹{selectedCampaign.partnerRevenue.toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Profit/Loss: <span className={selectedCampaign.partnerRevenue - selectedCampaign.cost >= 0 ? "text-emerald-400" : "text-red-400"}>
+                                        ₹{(selectedCampaign.partnerRevenue - selectedCampaign.cost).toLocaleString()}
+                                    </span>
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="space-y-3">
+                            <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">Status</span>
-                                <span className={selectedCampaign.status === "ENABLED" ? "text-success-500" : "text-muted-foreground"}>
+                                <span className={selectedCampaign.status === "Enabled" ? "text-success-500" : "text-muted-foreground"}>
                                     {selectedCampaign.status}
                                 </span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Type</span>
-                                <span>{selectedCampaign.type}</span>
-                            </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">CTR</span>
                                 <span>{selectedCampaign.ctr.toFixed(2)}%</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">CPC</span>
-                                <span>Rs.{selectedCampaign.cpc.toFixed(2)}</span>
+                            <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-muted-foreground">Avg CPC</span>
+                                <span>₹{selectedCampaign.avgCpc.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">CPA</span>
-                                <span>Rs.{selectedCampaign.cpa.toFixed(2)}</span>
+                            <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-muted-foreground">Conversions</span>
+                                <span>{selectedCampaign.conversions}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-muted-foreground">Conv. Rate</span>
+                                <span>{selectedCampaign.conversionRate.toFixed(2)}%</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-muted-foreground">Budget</span>
+                                <span>₹{selectedCampaign.budget.toLocaleString()} ({selectedCampaign.budgetType})</span>
+                            </div>
+                            <div className="flex justify-between py-2">
+                                <span className="text-muted-foreground">Optimization Score</span>
+                                <span className="text-purple-400">{selectedCampaign.optimizationScore.toFixed(1)}%</span>
                             </div>
                         </div>
                     </div>

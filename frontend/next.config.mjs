@@ -5,6 +5,13 @@ const nextConfig = {
         // your project has ESLint errors.
         ignoreDuringBuilds: true,
     },
+    // Allow ngrok and other dev origins for cross-origin CSS/JS
+    allowedDevOrigins: [
+        '*.ngrok-free.app',
+        '*.ngrok.io',
+        'localhost',
+        '127.0.0.1',
+    ],
 };
 
 export default nextConfig;

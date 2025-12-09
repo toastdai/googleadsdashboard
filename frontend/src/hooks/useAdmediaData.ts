@@ -117,6 +117,7 @@ export function calculateCampaignAdmediaData(
 ) {
     if (totalAMClicks === 0) {
         return {
+            isAdmedia: true,
             admediaLeads: 0,
             admediaConversions: 0,
             admediaEarnings: 0,
@@ -137,6 +138,7 @@ export function calculateCampaignAdmediaData(
     const profitability = Math.round((admediaEarningsInr - campaignCost) * 100) / 100;
 
     return {
+        isAdmedia: true,
         admediaLeads,
         admediaConversions,
         admediaEarnings,

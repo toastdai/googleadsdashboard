@@ -38,6 +38,12 @@ export interface Campaign {
     admediaConversions?: number;
     admediaEarnings?: number; // USD
     admediaEarningsInr?: number; // INR
+    // MaxBounty metrics (for MB campaigns)
+    isMaxBounty?: boolean;
+    maxBountyLeads?: number;
+    maxBountySales?: number;
+    maxBountyEarnings?: number; // USD
+    maxBountyEarningsInr?: number; // INR
     // AI-based metrics
     predictedROAS?: number;
     healthScore?: number; // 0-100 campaign health score
@@ -724,11 +730,20 @@ function getRecommendedAction(campaign: Campaign): string {
     return "Review campaign settings and targeting";
 }
 
+// Helper functions to detect network from campaign name (handles both "-kl" and " - KL" formats)
+function detectNetwork(name: string): { isKelkoo: boolean; isAdmedia: boolean; isMaxBounty: boolean } {
+    const n = name.toLowerCase();
+    return {
+        isKelkoo: /[\s-]+kl$/i.test(n),
+        isAdmedia: /[\s-]+am$/i.test(n),
+        isMaxBounty: /[\s-]+mb$/i.test(n),
+    };
+}
+
 // Enrich campaigns with Kelkoo, Admedia, and AI metrics
 export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
-    // Check if campaign ends with KL or AM (case insensitive)
-    const isKelkoo = campaign.name.toLowerCase().endsWith("-kl");
-    const isAdmedia = campaign.name.toLowerCase().endsWith("-am");
+    // Check if campaign ends with KL, AM, or MB (case insensitive, handles spaces)
+    const { isKelkoo, isAdmedia, isMaxBounty } = detectNetwork(campaign.name);
 
     // Calculate AI metrics for all campaigns
     const healthScore = calculateHealthScore(campaign);
@@ -752,7 +767,7 @@ export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
 
     // Handle Kelkoo campaigns
     if (isKelkoo) {
-        const klCampaigns = campaigns.filter(c => c.name.toLowerCase().endsWith("-kl"));
+        const klCampaigns = campaigns.filter(c => detectNetwork(c.name).isKelkoo);
         const totalKLClicks = klCampaigns.reduce((sum, c) => sum + c.clicks, 0);
         const clickRatio = totalKLClicks > 0 ? campaign.clicks / totalKLClicks : 0;
 
@@ -772,6 +787,7 @@ export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
             ...baseCampaign,
             isKelkoo: true,
             isAdmedia: false,
+            isMaxBounty: false,
             kelkooLeads,
             kelkooRevenue,
             kelkooRevenueInr,
@@ -785,7 +801,7 @@ export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
 
     // Handle Admedia campaigns
     if (isAdmedia) {
-        const amCampaigns = campaigns.filter(c => c.name.toLowerCase().endsWith("-am"));
+        const amCampaigns = campaigns.filter(c => detectNetwork(c.name).isAdmedia);
         const totalAMClicks = amCampaigns.reduce((sum, c) => sum + c.clicks, 0);
         const clickRatio = totalAMClicks > 0 ? campaign.clicks / totalAMClicks : 0;
 
@@ -801,6 +817,7 @@ export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
             ...baseCampaign,
             isKelkoo: false,
             isAdmedia: true,
+            isMaxBounty: false,
             admediaLeads,
             admediaConversions,
             admediaEarnings,
@@ -810,13 +827,32 @@ export const enrichedCampaigns: Campaign[] = campaigns.map(campaign => {
         };
     }
 
-    return { ...baseCampaign, isKelkoo: false, isAdmedia: false };
+    // Handle MaxBounty campaigns (fallback static data - will be enriched with live API data)
+    if (isMaxBounty) {
+        return {
+            ...baseCampaign,
+            isKelkoo: false,
+            isAdmedia: false,
+            isMaxBounty: true,
+            // These will be populated by liveEnrichedCampaigns with API data
+            maxBountyLeads: 0,
+            maxBountySales: 0,
+            maxBountyEarnings: 0,
+            maxBountyEarningsInr: 0,
+            actualROAS: 0,
+            profitability: 0,
+        };
+    }
+
+    return { ...baseCampaign, isKelkoo: false, isAdmedia: false, isMaxBounty: false };
 }).sort((a, b) => {
-    // Sort by data source first: KL, then AM, then others
+    // Sort by data source first: KL, then AM, then MB, then others
     if (a.isKelkoo && !b.isKelkoo) return -1;
     if (!a.isKelkoo && b.isKelkoo) return 1;
     if (a.isAdmedia && !b.isAdmedia) return -1;
     if (!a.isAdmedia && b.isAdmedia) return 1;
+    if (a.isMaxBounty && !b.isMaxBounty) return -1;
+    if (!a.isMaxBounty && b.isMaxBounty) return 1;
     // Then sort by cost (highest first)
     return (b.cost || 0) - (a.cost || 0);
 });
@@ -832,7 +868,7 @@ export const kelkooAggregates = {
     cpc: kelkooTotals.cpc,
     vpl: kelkooTotals.vpl,
     conversionRate: (kelkooTotals.sales / kelkooTotals.leads) * 100,
-    klCampaignCount: campaigns.filter(c => c.name.toLowerCase().endsWith("-kl")).length,
+    klCampaignCount: campaigns.filter(c => detectNetwork(c.name).isKelkoo).length,
 };
 
 // Admedia totals for AM campaigns
@@ -842,7 +878,7 @@ export const admediaAggregates = {
     totalEarningsUsd: admediaTotals.earningsUsd,
     totalEarningsInr: Math.round(admediaTotals.earningsUsd * USD_TO_INR * 100) / 100,
     conversionRate: admediaTotals.leads > 0 ? (admediaTotals.conversions / admediaTotals.leads) * 100 : 0,
-    amCampaignCount: campaigns.filter(c => c.name.toLowerCase().endsWith("-am")).length,
+    amCampaignCount: campaigns.filter(c => detectNetwork(c.name).isAdmedia).length,
 };
 
 // AI-based aggregate metrics

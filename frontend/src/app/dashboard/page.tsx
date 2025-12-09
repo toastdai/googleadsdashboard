@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooData";
 import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
+import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
 import {
     RefreshCw,
     Download,
@@ -164,6 +166,54 @@ const CommandPalette = ({
                 </div>
             </div>
         </div>
+    );
+};
+
+// Info Tooltip component - shows formula/info on hover (uses portal for visibility)
+const InfoTooltip = ({ content, children }: { content: React.ReactNode; children: React.ReactNode }) => {
+    const [show, setShow] = useState(false);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+    const triggerRef = useRef<HTMLSpanElement>(null);
+
+    const handleMouseEnter = () => {
+        if (triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setPosition({
+                top: rect.top - 10,
+                left: rect.left + rect.width / 2,
+            });
+        }
+        setShow(true);
+    };
+
+    return (
+        <>
+            <span 
+                ref={triggerRef}
+                className="relative inline-flex items-center gap-1 cursor-help" 
+                onMouseEnter={handleMouseEnter} 
+                onMouseLeave={() => setShow(false)}
+            >
+                {children}
+                <svg className="w-3.5 h-3.5 text-gray-500 hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </span>
+            {show && typeof document !== 'undefined' && createPortal(
+                <div 
+                    className="fixed z-[9999] w-72 p-4 bg-gray-900 border border-cyan-500/30 rounded-xl shadow-2xl shadow-cyan-500/10 text-xs text-gray-300 leading-relaxed animate-fade-in pointer-events-none"
+                    style={{ 
+                        top: position.top, 
+                        left: position.left,
+                        transform: 'translate(-50%, -100%)'
+                    }}
+                >
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-900 border-r border-b border-cyan-500/30 rotate-45" />
+                    {content}
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
 
@@ -543,12 +593,16 @@ export default function DashboardPage() {
     const [selectedView, setSelectedView] = useState<"overview" | "performance" | "budget">("overview");
     const [activeKPI, setActiveKPI] = useState<string | null>(null);
     const [detailModal, setDetailModal] = useState<{ type: string; title: string; data: Record<string, unknown> } | null>(null);
+    const [networkFilter, setNetworkFilter] = useState<"all" | "kelkoo" | "admedia" | "maxbounty">("all");
 
     // Fetch Kelkoo data dynamically from API
     const { data: kelkooApiData, loading: kelkooLoading, error: kelkooError, isFallback: kelkooIsFallback, refetch: refetchKelkoo } = useKelkooData("2025-10-01", "2025-10-31");
 
     // Fetch Admedia data dynamically from API
     const { data: admediaApiData, loading: admediaLoading, error: admediaError, isFallback: admediaIsFallback, refetch: refetchAdmedia } = useAdmediaData("2025-10-01", "2025-10-31");
+
+    // Fetch MaxBounty data dynamically from API
+    const { data: maxBountyApiData, campaigns: maxBountyCampaigns, loading: maxBountyLoading, error: maxBountyError, isFallback: maxBountyIsFallback, refetch: refetchMaxBounty } = useMaxBountyData("2025-10-01", "2025-10-31");
 
     // Live Kelkoo aggregates from API
     const liveKelkooAggregates = useMemo(() => {
@@ -603,17 +657,51 @@ export default function DashboardPage() {
         };
     }, [admediaApiData]);
 
+    // Live MaxBounty aggregates from API
+    const liveMaxBountyAggregates = useMemo(() => {
+        if (!maxBountyApiData) return {
+            clicks: 0,
+            leads: 0,
+            earnings: 0,
+            earningsInr: 0,
+            conversion: 0,
+            epc: 0,
+            sales: 0,
+            campaignCount: 0,
+        };
+        return {
+            clicks: maxBountyApiData.clicks,
+            leads: maxBountyApiData.leads,
+            earnings: maxBountyApiData.earnings,
+            earningsInr: maxBountyApiData.earningsInr,
+            conversion: maxBountyApiData.conversion,
+            epc: maxBountyApiData.epc,
+            sales: maxBountyApiData.sales,
+            campaignCount: maxBountyCampaigns.length,
+        };
+    }, [maxBountyApiData, maxBountyCampaigns]);
+
+    // Helper: detect network from campaign name (handles both "-kl" and " - KL" formats)
+    const detectNetwork = (name: string) => {
+        const n = name.toLowerCase();
+        return {
+            isKelkoo: /[\s-]+kl$/i.test(n),
+            isAdmedia: /[\s-]+am$/i.test(n),
+            isMaxBounty: /[\s-]+mb$/i.test(n),
+        };
+    };
+
     // Enrich campaigns with live Kelkoo and Admedia data
     const liveEnrichedCampaigns = useMemo(() => {
         let result = enrichedCampaigns;
 
         // Enrich with Kelkoo data
         if (kelkooApiData) {
-            const klCampaigns = campaigns.filter(c => c.name.toLowerCase().endsWith("-kl"));
+            const klCampaigns = campaigns.filter(c => detectNetwork(c.name).isKelkoo);
             const totalKLClicks = klCampaigns.reduce((sum, c) => sum + c.clicks, 0);
 
             result = result.map(campaign => {
-                if (!campaign.name.toLowerCase().endsWith("-kl")) return campaign;
+                if (!detectNetwork(campaign.name).isKelkoo) return campaign;
 
                 const kelkooData = calculateCampaignKelkooData(
                     kelkooApiData,
@@ -628,11 +716,11 @@ export default function DashboardPage() {
 
         // Enrich with Admedia data
         if (admediaApiData) {
-            const amCampaigns = campaigns.filter(c => c.name.toLowerCase().endsWith("-am"));
+            const amCampaigns = campaigns.filter(c => detectNetwork(c.name).isAdmedia);
             const totalAMClicks = amCampaigns.reduce((sum, c) => sum + c.clicks, 0);
 
             result = result.map(campaign => {
-                if (!campaign.name.toLowerCase().endsWith("-am")) return campaign;
+                if (!detectNetwork(campaign.name).isAdmedia) return campaign;
 
                 const admediaData = calculateCampaignAdmediaData(
                     admediaApiData,
@@ -645,8 +733,72 @@ export default function DashboardPage() {
             });
         }
 
+        // Enrich with MaxBounty data
+        if (maxBountyApiData) {
+            const mbCampaigns = campaigns.filter(c => detectNetwork(c.name).isMaxBounty);
+            const totalMBClicks = mbCampaigns.reduce((sum, c) => sum + c.clicks, 0);
+
+            result = result.map(campaign => {
+                if (!detectNetwork(campaign.name).isMaxBounty) return campaign;
+
+                const maxBountyData = calculateCampaignMaxBountyData(
+                    maxBountyApiData,
+                    campaign.clicks,
+                    totalMBClicks,
+                    campaign.cost
+                );
+
+                return { ...campaign, ...maxBountyData };
+            });
+        }
+
         return result;
-    }, [kelkooApiData, admediaApiData]);
+    }, [kelkooApiData, admediaApiData, maxBountyApiData]);
+
+    const filteredCampaigns = useMemo(() => {
+        return liveEnrichedCampaigns.filter(c => {
+            const net = detectNetwork(c.name);
+            if (networkFilter === "kelkoo") return net.isKelkoo;
+            if (networkFilter === "admedia") return net.isAdmedia;
+            if (networkFilter === "maxbounty") return net.isMaxBounty;
+            return true;
+        });
+    }, [liveEnrichedCampaigns, networkFilter]);
+
+    const networkComparison = useMemo(() => {
+        const base = {
+            cost: 0,
+            revenueInr: 0,
+            roas: 0,
+        };
+
+        const stats = {
+            kelkoo: { ...base },
+            admedia: { ...base },
+            maxbounty: { ...base },
+        };
+
+        liveEnrichedCampaigns.forEach(c => {
+            const net = detectNetwork(c.name);
+            if (net.isKelkoo) {
+                stats.kelkoo.cost += c.cost || 0;
+                stats.kelkoo.revenueInr += c.kelkooRevenueInr || 0;
+            } else if (net.isAdmedia) {
+                stats.admedia.cost += c.cost || 0;
+                stats.admedia.revenueInr += c.admediaEarningsInr || 0;
+            } else if (net.isMaxBounty) {
+                stats.maxbounty.cost += c.cost || 0;
+                stats.maxbounty.revenueInr += c.maxBountyEarningsInr || 0;
+            }
+        });
+
+        (Object.keys(stats) as Array<keyof typeof stats>).forEach(key => {
+            const s = stats[key];
+            s.roas = s.cost > 0 ? Math.round((s.revenueInr / s.cost) * 100) / 100 : 0;
+        });
+
+        return stats;
+    }, [liveEnrichedCampaigns]);
 
     // Keyboard shortcuts
     useKeyboardShortcut('k', () => setShowCommandPalette(true), true);
@@ -693,6 +845,7 @@ export default function DashboardPage() {
     function handleRefresh() {
         refetchKelkoo();
         refetchAdmedia();
+        refetchMaxBounty();
     }
 
     function handleToggleTheme() {
@@ -763,7 +916,7 @@ export default function DashboardPage() {
             key: "name",
             header: "Campaign",
             sortable: true,
-            render: (value: string, row: Campaign & { isKelkoo?: boolean; isAdmedia?: boolean }) => (
+            render: (value: string, row: Campaign & { isKelkoo?: boolean; isAdmedia?: boolean; isMaxBounty?: boolean }) => (
                 <button
                     onClick={() => setSelectedCampaign(row)}
                     className="text-left hover:text-purple-400 transition-colors font-medium flex items-center gap-2 max-w-[200px]"
@@ -774,6 +927,9 @@ export default function DashboardPage() {
                         )}
                         {row.isAdmedia && (
                             <span className="px-1 py-0.5 text-[9px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 rounded text-white">AM</span>
+                        )}
+                        {row.isMaxBounty && (
+                            <span className="px-1 py-0.5 text-[9px] font-bold bg-gradient-to-r from-rose-500 to-red-500 rounded text-white">MB</span>
                         )}
                     </span>
                     <span className="truncate">{value}</span>
@@ -832,7 +988,11 @@ export default function DashboardPage() {
         },
         {
             key: "healthScore",
-            header: "Score",
+            header: (
+                <InfoTooltip content={<><strong>Health Score (0-100):</strong><br/>• CTR: 30 pts<br/>• Conv Rate: 30 pts<br/>• Opt Score: 20 pts<br/>• Budget util: 20 pts<br/><br/><strong>Efficiency Rating (A-F):</strong><br/>Based on conversions per ₹1000 spend</>}>
+                    <span>Score</span>
+                </InfoTooltip>
+            ) as unknown as string,
             align: "center" as const,
             sortable: true,
             render: (value: number | undefined, row: Campaign & { efficiencyRating?: string }) => (
@@ -857,15 +1017,21 @@ export default function DashboardPage() {
         },
         {
             key: "kelkooLeads",
-            header: "Partner Data",
+            header: (
+                <InfoTooltip content={<><strong>Partner Data:</strong><br/>• Leads/clicks from affiliate network<br/>• Revenue in INR (commission only)<br/><br/><em>Allocated by click ratio within network.</em></>}>
+                    <span>Partner Data</span>
+                </InfoTooltip>
+            ) as unknown as string,
             align: "right" as const,
             sortable: true,
-            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean; isAdmedia?: boolean; kelkooRevenueInr?: number; admediaLeads?: number; admediaEarningsInr?: number }) => {
+            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean; isAdmedia?: boolean; isMaxBounty?: boolean; kelkooRevenueInr?: number; kelkooSaleValueInr?: number; admediaLeads?: number; admediaEarningsInr?: number; maxBountyLeads?: number; maxBountyEarningsInr?: number }) => {
                 if (row.isKelkoo) {
+                    // Show commission/lead revenue only (excludes gross sale value) to align with ROAS calculation
+                    const commissionInr = row.kelkooRevenueInr || 0;
                     return (
                         <div className="text-right">
                             <p className="text-cyan-400 font-medium">{(value || 0).toLocaleString()} leads</p>
-                            <p className="text-xs text-emerald-400">₹{((row.kelkooRevenueInr || 0)).toLocaleString()}</p>
+                            <p className="text-xs text-emerald-400">₹{commissionInr.toLocaleString()}</p>
                         </div>
                     );
                 }
@@ -877,16 +1043,28 @@ export default function DashboardPage() {
                         </div>
                     );
                 }
+                if (row.isMaxBounty) {
+                    return (
+                        <div className="text-right">
+                            <p className="text-rose-400 font-medium">{(row.maxBountyLeads || 0).toLocaleString()} leads</p>
+                            <p className="text-xs text-emerald-400">₹{((row.maxBountyEarningsInr || 0)).toLocaleString()}</p>
+                        </div>
+                    );
+                }
                 return <span className="text-gray-600">-</span>;
             },
         },
         {
             key: "actualROAS",
-            header: "ROAS",
+            header: (
+                <InfoTooltip content={<><strong>ROAS (Return on Ad Spend):</strong><br/>Partner Revenue (INR) ÷ Ad Cost<br/><br/>• &gt;1.0x = Profitable<br/>• &lt;1.0x = Loss<br/><br/><strong>Profit/Loss:</strong><br/>Revenue - Cost</>}>
+                    <span>ROAS</span>
+                </InfoTooltip>
+            ) as unknown as string,
             align: "right" as const,
             sortable: true,
-            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean; isAdmedia?: boolean; profitability?: number }) => {
-                if (row.isKelkoo || row.isAdmedia) {
+            render: (value: number | undefined, row: Campaign & { isKelkoo?: boolean; isAdmedia?: boolean; isMaxBounty?: boolean; profitability?: number }) => {
+                if (row.isKelkoo || row.isAdmedia || row.isMaxBounty) {
                     const profit = row.profitability || 0;
                     return (
                         <div className="text-right">
@@ -975,7 +1153,8 @@ export default function DashboardPage() {
                             <span className="text-rose-400 font-semibold">{aiMetrics.atRiskCampaigns} at risk</span>.{" "}
                             <span className="text-gray-400">
                                 Kelkoo: <span className="text-emerald-400">{liveKelkooAggregates.totalLeads.toLocaleString()}</span> leads (€{liveKelkooAggregates.totalRevenueEur.toLocaleString()}).{" "}
-                                Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads (${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).
+                                Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads (${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).{" "}
+                                MaxBounty: <span className="text-rose-400">{liveMaxBountyAggregates.leads.toLocaleString()}</span> leads (${liveMaxBountyAggregates.earnings.toLocaleString()}).
                             </span>
                         </p>
                     </div>
@@ -1059,8 +1238,8 @@ export default function DashboardPage() {
                 </button>
             </div>
 
-            {/* Data Source Summary (Kelkoo + Admedia) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Data Source Summary (Kelkoo + Admedia + MaxBounty) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Kelkoo Summary - Now with LIVE API data */}
                 <div className="bg-gradient-to-br from-cyan-900/20 to-purple-900/20 rounded-xl border border-cyan-500/20 p-5">
                     <div className="flex items-center gap-3 mb-4">
@@ -1223,6 +1402,78 @@ export default function DashboardPage() {
                             <p className="text-xs text-gray-500">CPL</p>
                             <p className="text-base font-semibold text-white">${liveAdmediaAggregates.cpl.toFixed(2)}</p>
                             <p className="text-xs text-gray-400">₹{(liveAdmediaAggregates.cpl * 83.5).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
+                </div>
+
+                {/* MaxBounty Summary - LIVE API data */}
+                <div className="bg-gradient-to-br from-rose-900/20 to-red-900/20 rounded-xl border border-rose-500/20 p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</div>
+                        <h3 className="text-lg font-semibold text-white">MaxBounty (Oct 2025)</h3>
+                        {maxBountyLoading ? (
+                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
+                        ) : maxBountyIsFallback ? (
+                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
+                        ) : (
+                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
+                        )}
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                refetchMaxBounty();
+                            }}
+                            disabled={maxBountyLoading}
+                            className="ml-auto p-1.5 rounded-lg hover:bg-rose-500/20 transition-colors disabled:opacity-50"
+                            title="Refresh MaxBounty data"
+                        >
+                            <RefreshCw className={`w-4 h-4 text-rose-400 ${maxBountyLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                        {maxBountyError && <span className="text-xs text-red-400">{maxBountyError}</span>}
+                    </div>
+                    <div 
+                        className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-rose-900/10 rounded-lg p-2 -m-2 transition-colors"
+                        onClick={() => setDetailModal({
+                            type: "maxbounty",
+                            title: "MaxBounty Performance Details",
+                            data: {
+                                clicks: liveMaxBountyAggregates.clicks,
+                                leads: liveMaxBountyAggregates.leads,
+                                earnings: liveMaxBountyAggregates.earnings,
+                                earningsInr: liveMaxBountyAggregates.earningsInr,
+                                conversion: liveMaxBountyAggregates.conversion,
+                                epc: liveMaxBountyAggregates.epc,
+                                sales: liveMaxBountyAggregates.sales,
+                                isLive: !maxBountyIsFallback,
+                                campaigns: maxBountyCampaigns,
+                            }
+                        })}
+                    >
+                        <div>
+                            <p className="text-xs text-gray-500">Clicks</p>
+                            <p className="text-xl font-bold text-rose-400">{liveMaxBountyAggregates.clicks.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Leads</p>
+                            <p className="text-xl font-bold text-emerald-400">{liveMaxBountyAggregates.leads.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Conv Rate</p>
+                            <p className="text-xl font-bold text-purple-400">{liveMaxBountyAggregates.conversion.toFixed(1)}%</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Earnings</p>
+                            <p className="text-base font-semibold text-emerald-400">${liveMaxBountyAggregates.earnings.toLocaleString()}</p>
+                            <p className="text-xs text-emerald-300/70">₹{liveMaxBountyAggregates.earningsInr.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">EPC</p>
+                            <p className="text-base font-semibold text-white">${liveMaxBountyAggregates.epc.toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Sales Value</p>
+                            <p className="text-base font-semibold text-white">${liveMaxBountyAggregates.sales.toLocaleString()}</p>
                         </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
@@ -1442,13 +1693,81 @@ export default function DashboardPage() {
             </div>
 
             {/* Campaign Table */}
-            <DataTable
-                data={liveEnrichedCampaigns}
-                columns={campaignColumns}
-                title={`All Campaigns (KL campaigns with ${kelkooLoading ? "loading..." : kelkooIsFallback ? "cached" : "live"} Kelkoo data)`}
-                searchKeys={["name", "account"]}
-                pageSize={10}
-            />
+            <div className="space-y-6">
+                {/* Network Filters & Comparison - Inline with Table */}
+                <div className="relative z-10 flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between bg-gray-900/80 rounded-2xl p-4 border border-gray-700/50 backdrop-blur-sm">
+                    {/* Network Filter Buttons */}
+                    <div className="flex items-center gap-2 bg-gray-800/70 rounded-xl p-3 border border-gray-600/50">
+                        <span className="text-xs text-gray-500 mr-2">Network:</span>
+                        {([
+                            { key: "all", label: "All", color: "bg-gray-600", count: liveEnrichedCampaigns.length },
+                            { key: "kelkoo", label: "Kelkoo", color: "bg-gradient-to-r from-purple-500 to-cyan-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isKelkoo).length },
+                            { key: "admedia", label: "Admedia", color: "bg-gradient-to-r from-amber-500 to-orange-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isAdmedia).length },
+                            { key: "maxbounty", label: "MaxBounty", color: "bg-gradient-to-r from-rose-500 to-red-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isMaxBounty).length },
+                        ] as const).map(({ key, label, color, count }) => (
+                            <button
+                                key={key}
+                                onClick={() => setNetworkFilter(key)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                                    networkFilter === key
+                                        ? `${color} text-white shadow-lg`
+                                        : "bg-gray-700/50 text-gray-400 hover:bg-gray-700 hover:text-white"
+                                }`}
+                            >
+                                {label}
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${networkFilter === key ? "bg-white/20" : "bg-gray-600"}`}>{count}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Network ROAS Comparison */}
+                    <div className="flex gap-3 flex-wrap">
+                        <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "kelkoo" ? "bg-purple-500/30 border-purple-500/60 shadow-purple-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-purple-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "kelkoo" ? "all" : "kelkoo")}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-white">KL</span>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.kelkoo.roas.toFixed(2)}x</p>
+                                    <p className="text-[10px] text-gray-400">₹{(networkComparison.kelkoo.revenueInr/1000).toFixed(0)}k rev</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "admedia" ? "bg-amber-500/30 border-amber-500/60 shadow-amber-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-amber-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "admedia" ? "all" : "admedia")}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-white">AM</span>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.admedia.roas.toFixed(2)}x</p>
+                                    <p className="text-[10px] text-gray-400">₹{(networkComparison.admedia.revenueInr/1000).toFixed(0)}k rev</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "maxbounty" ? "bg-rose-500/30 border-rose-500/60 shadow-rose-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-rose-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "maxbounty" ? "all" : "maxbounty")}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-white">MB</span>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.maxbounty.roas.toFixed(2)}x</p>
+                                    <p className="text-[10px] text-gray-400">₹{(networkComparison.maxbounty.revenueInr/1000).toFixed(0)}k rev</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="relative z-0">
+                    <DataTable
+                        data={filteredCampaigns}
+                        columns={campaignColumns}
+                        title={`${networkFilter === "all" ? "All" : networkFilter.charAt(0).toUpperCase() + networkFilter.slice(1)} Campaigns (${filteredCampaigns.length}${kelkooLoading || admediaLoading || maxBountyLoading ? " - loading..." : ""})`}
+                        searchKeys={["name", "account"]}
+                        pageSize={10}
+                    />
+                </div>
+            </div>
 
             {/* Campaign Modal */}
             <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
@@ -1696,6 +2015,77 @@ export default function DashboardPage() {
                                         >
                                             <RefreshCw className="w-4 h-4" />
                                             Refresh Admedia Data
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {detailModal.type === "maxbounty" && (
+                                <>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</span>
+                                        {(detailModal.data.isLive as boolean) ? (
+                                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
+                                        ) : (
+                                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">Total Clicks</p>
+                                            <p className="text-2xl font-bold text-rose-400">{(detailModal.data.clicks as number).toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">Leads</p>
+                                            <p className="text-2xl font-bold text-emerald-400">{(detailModal.data.leads as number).toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">Earnings (USD)</p>
+                                            <p className="text-2xl font-bold text-emerald-400">${(detailModal.data.earnings as number).toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">Earnings (INR)</p>
+                                            <p className="text-2xl font-bold text-emerald-400">₹{Math.round(detailModal.data.earningsInr as number).toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">Conv. Rate</p>
+                                            <p className="text-2xl font-bold text-purple-400">{(detailModal.data.conversion as number).toFixed(1)}%</p>
+                                        </div>
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">EPC</p>
+                                            <p className="text-2xl font-bold text-white">${(detailModal.data.epc as number).toFixed(2)}</p>
+                                        </div>
+                                        <div className="bg-gray-800/50 rounded-xl p-4">
+                                            <p className="text-xs text-gray-500">Sales Value</p>
+                                            <p className="text-2xl font-bold text-white">${(detailModal.data.sales as number).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-sm font-semibold text-white mb-3">MaxBounty Campaigns Performance</h3>
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                        {(detailModal.data.campaigns as { name: string; campaign_id: number; clicks: number; leads: number; earnings: number; conversion: number; epc: number; sales: number }[]).map((camp, i) => (
+                                            <div key={camp.campaign_id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
+                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                    <p className="text-xs text-gray-500">Clicks: {camp.clicks.toLocaleString()} | Conv: {camp.conversion.toFixed(1)}%</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-medium text-rose-400">{camp.leads} leads</p>
+                                                    <p className="text-xs text-emerald-400">${camp.earnings.toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                                        <button
+                                            onClick={() => refetchMaxBounty()}
+                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                                        >
+                                            <RefreshCw className="w-4 h-4" />
+                                            Refresh MaxBounty Data
                                         </button>
                                     </div>
                                 </>

@@ -96,6 +96,7 @@ export function calculateCampaignKelkooData(
 ) {
     if (totalKLClicks === 0) {
         return {
+            isKelkoo: true,
             kelkooLeads: 0,
             kelkooRevenue: 0,
             kelkooRevenueInr: 0,
@@ -117,11 +118,13 @@ export function calculateCampaignKelkooData(
     const kelkooRevenueInr = Math.round(kelkooRevenue * EUR_TO_INR * 100) / 100;
     const kelkooSaleValueInr = Math.round(kelkooSaleValue * EUR_TO_INR * 100) / 100;
 
-    const totalRevenueInr = kelkooRevenueInr + kelkooSaleValueInr;
+    // ROAS should use commission/lead revenue only (not gross sale value), otherwise we overstate returns.
+    const totalRevenueInr = kelkooRevenueInr;
     const actualROAS = campaignCost > 0 ? Math.round((totalRevenueInr / campaignCost) * 100) / 100 : 0;
     const profitability = Math.round((totalRevenueInr - campaignCost) * 100) / 100;
 
     return {
+        isKelkoo: true,
         kelkooLeads,
         kelkooRevenue,
         kelkooRevenueInr,
