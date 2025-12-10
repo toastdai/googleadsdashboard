@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base, DATABASE_CONFIGURED
 from app.api import auth, accounts, dashboard, campaigns, metrics, alerts, reports, notifications
+from app.api.alerts_whatsapp import router as alerts_whatsapp_router
 
 
 @asynccontextmanager
@@ -66,6 +67,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
+app.include_router(alerts_whatsapp_router, tags=["WhatsApp Alerts"])  # Routes: /api/alerts/check-spikes, etc.
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 
