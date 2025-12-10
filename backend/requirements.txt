@@ -36,4 +36,5 @@ email-validator==2.1.0
 # Utilities
 python-dotenv==1.0.0
 
-# Telegram Bot API uses httpx (already included above)
+# Background Scheduler (for cron jobs)
+apscheduler==3.10.4

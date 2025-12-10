@@ -10,6 +10,7 @@ from app.config import settings
 from app.database import engine, Base, DATABASE_CONFIGURED
 from app.api import auth, accounts, dashboard, campaigns, metrics, alerts, reports, notifications
 from app.api.alerts_whatsapp import router as alerts_whatsapp_router
+from app.services.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -26,9 +27,14 @@ async def lifespan(app: FastAPI):
     else:
         print("Database not configured - running without database")
     
+    # Start the background scheduler for automatic spike detection
+    print("Starting background scheduler for spike alerts...")
+    start_scheduler()
+    
     yield
     
-    # Shutdown: Clean up resources
+    # Shutdown: Stop scheduler and clean up resources
+    stop_scheduler()
     if engine is not None:
         await engine.dispose()
 

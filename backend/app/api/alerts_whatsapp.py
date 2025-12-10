@@ -4,8 +4,10 @@ FREE spike notifications via Telegram Bot
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 from ..services import get_telegram_service, get_spike_detector
+from ..services.scheduler import get_scheduler_status
 
 router = APIRouter(prefix="/api/alerts", tags=["Telegram Alerts"])
 
@@ -20,6 +22,9 @@ class ConfigResponse(BaseModel):
     telegram_configured: bool
     spike_threshold_percent: float
     frontend_url: str
+    scheduler_running: bool
+    scheduler_interval_minutes: Optional[int]
+    next_check: Optional[str]
 
 
 @router.get("/config")
@@ -27,11 +32,15 @@ async def get_alert_config() -> ConfigResponse:
     """Get current alert configuration status."""
     telegram = await get_telegram_service()
     detector = get_spike_detector()
+    scheduler_status = get_scheduler_status()
     
     return ConfigResponse(
         telegram_configured=telegram.is_configured,
         spike_threshold_percent=detector.threshold,
-        frontend_url=detector.frontend_url
+        frontend_url=detector.frontend_url,
+        scheduler_running=scheduler_status.get("running", False),
+        scheduler_interval_minutes=scheduler_status.get("interval_minutes"),
+        next_check=scheduler_status.get("next_run")
     )
 
 
