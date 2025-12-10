@@ -48,15 +48,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware - allow production URLs
-allowed_origins = [
+# CORS middleware - configurable via CORS_ORIGINS env var (comma-separated)
+import os
+
+default_origins = [
     settings.frontend_url,
     "http://localhost:3000",
     "http://localhost:3002",
     "http://localhost:3003",
+]
+
+# Parse additional origins from environment
+extra_origins = os.getenv("CORS_ORIGINS", "")
+if extra_origins:
+    default_origins.extend([o.strip() for o in extra_origins.split(",") if o.strip()])
+
+# Always include standard production URLs as fallback
+production_urls = [
     "https://googleadsdashboard-beta.vercel.app",
     "https://googleadsdashboard.vercel.app",
 ]
+allowed_origins = list(set(default_origins + production_urls))
 
 app.add_middleware(
     CORSMiddleware,

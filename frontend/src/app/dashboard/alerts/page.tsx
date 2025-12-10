@@ -3,16 +3,11 @@
 import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAlerts } from "@/lib/hooks";
-import { Alert } from "@/lib/api";
+import { Alert, api, AlertConfig as ApiAlertConfig } from "@/lib/api";
 import { DataTable } from "@/components/data-table";
 
-interface AlertConfig {
-    telegram_configured: boolean;
-    spike_threshold_percent: number;
-    frontend_url: string;
-    scheduler_running: boolean;
-    scheduler_interval_minutes?: number;
-    next_check?: string;
+interface AlertConfig extends ApiAlertConfig {
+    // Local extension if needed
 }
 
 const AlertIcon = ({ severity }: { severity: string }) => {
@@ -244,11 +239,8 @@ export default function AlertsPage() {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const response = await fetch('https://googleadsdashboard.onrender.com/api/alerts/config');
-                if (response.ok) {
-                    const data = await response.json();
-                    setAlertConfig(data);
-                }
+                const data = await api.getAlertConfig();
+                setAlertConfig(data as AlertConfig);
             } catch (error) {
                 console.error('Failed to fetch alert config:', error);
             }
@@ -265,10 +257,7 @@ export default function AlertsPage() {
         setIsChecking(true);
         setCheckResult(null);
         try {
-            const response = await fetch('https://googleadsdashboard.onrender.com/api/alerts/check-spikes', {
-                method: 'POST',
-            });
-            const data = await response.json();
+            const data = await api.triggerSpikeCheck();
             if (data.spikes_detected > 0) {
                 setCheckResult(`Found ${data.spikes_detected} spike(s). ${data.alerts_sent} alert(s) sent to Telegram.`);
             } else {

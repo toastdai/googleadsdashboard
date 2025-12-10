@@ -192,6 +192,35 @@ class ApiClient {
             method: "POST",
         });
     }
+
+    // Alert Management
+    async getAlertConfig() {
+        return this.request<AlertConfig>("/alerts/config");
+    }
+
+    async triggerSpikeCheck() {
+        return this.request<SpikeCheckResult>("/alerts/check-spikes", {
+            method: "POST",
+        });
+    }
+
+    async pauseAlerts() {
+        return this.request<{ paused: boolean; message: string }>("/alerts/pause", {
+            method: "POST",
+        });
+    }
+
+    async resumeAlerts() {
+        return this.request<{ paused: boolean; message: string }>("/alerts/resume", {
+            method: "POST",
+        });
+    }
+
+    async testTelegramConnection() {
+        return this.request<{ success: boolean; message_id?: number; error?: string }>("/alerts/test", {
+            method: "POST",
+        });
+    }
 }
 
 // Types
@@ -305,5 +334,24 @@ export interface Account {
     created_at: string;
 }
 
+export interface AlertConfig {
+    telegram_configured: boolean;
+    spike_threshold_percent: number;
+    frontend_url: string;
+    scheduler_running: boolean;
+    scheduler_interval_minutes?: number;
+    next_check?: string;
+    alerts_paused?: boolean;
+}
+
+export interface SpikeCheckResult {
+    success: boolean;
+    spikes_detected: number;
+    alerts_sent: number;
+    networks_checked: string[];
+    timestamp: string;
+}
+
 // Export singleton instance
 export const api = new ApiClient(API_BASE_URL);
+

@@ -25,14 +25,18 @@ class ConfigResponse(BaseModel):
     scheduler_running: bool
     scheduler_interval_minutes: Optional[int]
     next_check: Optional[str]
+    alerts_paused: bool = False
 
 
 @router.get("/config")
 async def get_alert_config() -> ConfigResponse:
     """Get current alert configuration status."""
+    from ..services.bot_commands import get_bot_commands
+    
     telegram = await get_telegram_service()
     detector = get_spike_detector()
     scheduler_status = get_scheduler_status()
+    bot = get_bot_commands()
     
     return ConfigResponse(
         telegram_configured=telegram.is_configured,
@@ -40,7 +44,8 @@ async def get_alert_config() -> ConfigResponse:
         frontend_url=detector.frontend_url,
         scheduler_running=scheduler_status.get("running", False),
         scheduler_interval_minutes=scheduler_status.get("interval_minutes"),
-        next_check=scheduler_status.get("next_run")
+        next_check=scheduler_status.get("next_run"),
+        alerts_paused=bot.alerts_paused
     )
 
 
@@ -50,9 +55,46 @@ async def check_spikes():
     Manually check for spikes in partner metrics.
     This compares current values against the last recorded values.
     """
+    from datetime import datetime
+    
     detector = get_spike_detector()
     result = await detector.check_and_alert()
-    return result
+    
+    return {
+        "success": True,
+        "spikes_detected": result.get("spikes_detected", 0),
+        "alerts_sent": result.get("alerts_sent", 0),
+        "networks_checked": ["Kelkoo", "Admedia", "MaxBounty"],
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@router.post("/pause")
+async def pause_alerts():
+    """Pause alert notifications (detection continues but no messages sent)."""
+    from ..services.bot_commands import get_bot_commands
+    
+    bot = get_bot_commands()
+    bot.alerts_paused = True
+    
+    return {
+        "paused": True,
+        "message": "Alerts paused. Spike detection continues but notifications are disabled."
+    }
+
+
+@router.post("/resume")
+async def resume_alerts():
+    """Resume alert notifications."""
+    from ..services.bot_commands import get_bot_commands
+    
+    bot = get_bot_commands()
+    bot.alerts_paused = False
+    
+    return {
+        "paused": False,
+        "message": "Alerts resumed. Notifications are now active."
+    }
 
 
 @router.post("/test-message")
@@ -79,7 +121,7 @@ async def send_test_message(request: TestMessageRequest):
     return result
 
 
-@router.post("/test-connection")
+@router.post("/test")
 async def test_telegram_connection():
     """
     Send a test connection message to verify Telegram bot setup.
@@ -140,3 +182,4 @@ async def send_test_spike_alert():
         "message": "Test spike alert sent! Check your Telegram.",
         "message_id": result.get("message_id")
     }
+
