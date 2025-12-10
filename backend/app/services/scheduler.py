@@ -45,6 +45,17 @@ async def check_spikes_job():
         logger.error(f"Error in spike check job: {e}")
 
 
+async def poll_bot_commands():
+    """Background job to poll and respond to Telegram bot commands."""
+    from .bot_commands import get_bot_commands
+    
+    try:
+        bot = get_bot_commands()
+        await bot.poll_updates()
+    except Exception as e:
+        logger.error(f"Error polling bot commands: {e}")
+
+
 def start_scheduler():
     """Start the background scheduler."""
     global scheduler
@@ -68,8 +79,18 @@ def start_scheduler():
         max_instances=1
     )
     
+    # Add bot command polling job (every 5 seconds)
+    scheduler.add_job(
+        poll_bot_commands,
+        trigger=IntervalTrigger(seconds=5),
+        id="bot_commands",
+        name="Poll Telegram bot commands",
+        replace_existing=True,
+        max_instances=1
+    )
+    
     scheduler.start()
-    logger.info(f"Scheduler started - checking for spikes every {check_interval_minutes} minutes")
+    logger.info(f"Scheduler started - checking for spikes every {check_interval_minutes} minutes, polling commands every 5 seconds")
     
     # Run initial check after 30 seconds (to let the app fully start)
     async def delayed_initial_check():
