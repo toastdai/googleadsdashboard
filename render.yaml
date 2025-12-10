@@ -8,7 +8,7 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    repo: https://github.com/toastdai/googleadsdashboard.git
+    repo: https://github.com/aviralgarg05/GoogleAds-Dashboard.git
     branch: main
     region: oregon
     plan: free
@@ -30,3 +30,18 @@ services:
         sync: false
       - key: ENVIRONMENT
         value: production
+      # Telegram Bot Configuration
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      # Alert Configuration
+      - key: SPIKE_THRESHOLD_PERCENT
+        value: "20"
+      - key: SPIKE_CHECK_INTERVAL_MINUTES
+        value: "60"
+      - key: FRONTEND_URL
+        value: "https://googleadsdashboard-beta.vercel.app"
+      # CORS Configuration
+      - key: CORS_ORIGINS
+        value: "https://googleadsdashboard-beta.vercel.app,https://googleadsdashboard.vercel.app"
