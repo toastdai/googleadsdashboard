@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAlerts } from "@/lib/hooks";
 import { Alert, api, AlertConfig as ApiAlertConfig } from "@/lib/api";
@@ -65,10 +64,12 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 // Telegram Integration Panel Component
-function TelegramPanel({ config, onCheckSpikes, isChecking }: {
+function TelegramPanel({ config, onCheckSpikes, isChecking, onPauseToggle, isPausing }: {
     config: AlertConfig | null;
     onCheckSpikes: () => void;
     isChecking: boolean;
+    onPauseToggle: () => void;
+    isPausing: boolean;
 }) {
     const [showSetup, setShowSetup] = useState(false);
 
@@ -76,8 +77,10 @@ function TelegramPanel({ config, onCheckSpikes, isChecking }: {
         <div className="glass-card p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden">
-                        <Image src="/logo.png" alt="Dashboard Logo" width={48} height={48} className="object-cover" />
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
+                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold">Telegram Alerts</h3>
@@ -88,6 +91,11 @@ function TelegramPanel({ config, onCheckSpikes, isChecking }: {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {config?.alerts_paused && (
+                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning-500/20 text-warning-500 text-sm font-medium">
+                            PAUSED
+                        </span>
+                    )}
                     {config?.telegram_configured ? (
                         <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success-500/20 text-success-500 text-sm font-medium">
                             <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></span>
@@ -130,7 +138,7 @@ function TelegramPanel({ config, onCheckSpikes, isChecking }: {
                         <div className="bg-muted/50 rounded-xl p-3">
                             <div className="text-xs text-muted-foreground mb-1">Threshold</div>
                             <div className="text-sm font-semibold">
-                                {config?.spike_threshold_percent || 20}% change
+                                {config?.spike_threshold_percent || 20} % change
                             </div>
                         </div>
                         <div className="bg-muted/50 rounded-xl p-3">
@@ -163,16 +171,39 @@ function TelegramPanel({ config, onCheckSpikes, isChecking }: {
                     {isChecking ? 'Checking...' : 'Check Now'}
                 </button>
 
+                <button
+                    onClick={onPauseToggle}
+                    disabled={isPausing}
+                    className={`flex items-center gap-2 ${config?.alerts_paused ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                    {isPausing ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    ) : config?.alerts_paused ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    )}
+                    {isPausing ? 'Updating...' : config?.alerts_paused ? 'Resume Alerts' : 'Pause Alerts'}
+                </button>
+
                 <a
                     href="https://t.me/tellspike_alerts_bot"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-secondary flex items-center gap-2"
+                    className="btn-ghost flex items-center gap-2"
                 >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
                     </svg>
-                    Open Bot
+                    Open Telegram Bot
                 </a>
 
                 <button
@@ -180,7 +211,7 @@ function TelegramPanel({ config, onCheckSpikes, isChecking }: {
                     className="btn-ghost flex items-center gap-2"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     {showSetup ? 'Hide Setup' : 'Setup Guide'}
@@ -230,6 +261,7 @@ export default function AlertsPage() {
     const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
     const [alertConfig, setAlertConfig] = useState<AlertConfig | null>(null);
     const [isChecking, setIsChecking] = useState(false);
+    const [isPausing, setIsPausing] = useState(false);
     const [checkResult, setCheckResult] = useState<string | null>(null);
 
     // Use API hook
@@ -267,6 +299,25 @@ export default function AlertsPage() {
             setCheckResult('Failed to check spikes. Backend may be starting up.');
         } finally {
             setIsChecking(false);
+        }
+    };
+
+    // Handle pause/resume toggle
+    const handlePauseToggle = async () => {
+        setIsPausing(true);
+        try {
+            if (alertConfig?.alerts_paused) {
+                await api.resumeAlerts();
+            } else {
+                await api.pauseAlerts();
+            }
+            // Refresh config to get updated state
+            const data = await api.getAlertConfig();
+            setAlertConfig(data as AlertConfig);
+        } catch (error) {
+            console.error('Failed to toggle pause state:', error);
+        } finally {
+            setIsPausing(false);
         }
     };
 
@@ -319,6 +370,8 @@ export default function AlertsPage() {
                 config={alertConfig}
                 onCheckSpikes={handleCheckSpikes}
                 isChecking={isChecking}
+                onPauseToggle={handlePauseToggle}
+                isPausing={isPausing}
             />
 
             {/* Check Result Toast */}
