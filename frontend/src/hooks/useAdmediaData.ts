@@ -142,6 +142,7 @@ export function calculateCampaignAdmediaData(
         admediaLeads,
         admediaConversions,
         admediaEarnings,
+        admediaEarningsUsd: admediaEarnings, // USD value for column display
         admediaEarningsInr,
         actualROAS,
         profitability,

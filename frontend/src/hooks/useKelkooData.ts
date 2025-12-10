@@ -127,6 +127,7 @@ export function calculateCampaignKelkooData(
         isKelkoo: true,
         kelkooLeads,
         kelkooRevenue,
+        kelkooRevenueEur: kelkooRevenue, // EUR value for USD column conversion
         kelkooRevenueInr,
         kelkooSales,
         kelkooSaleValue,

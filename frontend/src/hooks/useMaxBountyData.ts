@@ -144,6 +144,7 @@ export function calculateCampaignMaxBountyData(
         maxBountyLeads,
         maxBountySales,
         maxBountyEarnings,
+        maxBountyEarningsUsd: maxBountyEarnings, // USD value for column display
         maxBountyEarningsInr,
         actualROAS,
         profitability,
