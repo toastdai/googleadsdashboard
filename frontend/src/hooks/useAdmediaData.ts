@@ -39,8 +39,8 @@ interface UseAdmediaDataResult {
 const USD_TO_INR = 85;
 
 export function useAdmediaData(
-    startDate: string = "2025-10-01",
-    endDate: string = "2025-10-31"
+    startDate: string,
+    endDate: string
 ): UseAdmediaDataResult {
     const [data, setData] = useState<AdmediaData | null>(null);
     const [campaigns, setCampaigns] = useState<AdmediaCampaignData[]>([]);

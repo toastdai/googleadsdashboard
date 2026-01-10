@@ -602,8 +602,11 @@ let bottomPerformers = campaigns
 export const dailyTrend = Array.from({ length: 31 }, (_, i) => {
     const day = i + 1;
     const variance = 0.8 + Math.random() * 0.4; // 80-120% variance
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
     return {
-        date: `2025-10-${String(day).padStart(2, "0")}`,
+        date: `${year}-${month}-${String(day).padStart(2, "0")}`,
         clicks: Math.round(totals.clicks / 31 * variance),
         impressions: Math.round(totals.impressions / 31 * variance),
         cost: Math.round(totals.cost / 31 * variance),

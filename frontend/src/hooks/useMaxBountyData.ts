@@ -39,8 +39,8 @@ interface UseMaxBountyDataResult {
 }
 
 export function useMaxBountyData(
-    startDate: string = "2025-10-01",
-    endDate: string = "2025-10-31"
+    startDate: string,
+    endDate: string
 ): UseMaxBountyDataResult {
     const [data, setData] = useState<MaxBountyData | null>(null);
     const [campaigns, setCampaigns] = useState<MaxBountyCampaign[]>([]);

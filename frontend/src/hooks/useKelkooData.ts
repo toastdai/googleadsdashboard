@@ -30,8 +30,8 @@ interface UseKelkooDataResult {
 const EUR_TO_INR = 89.5;
 
 export function useKelkooData(
-    startDate: string = "2025-10-01",
-    endDate: string = "2025-10-31"
+    startDate: string,
+    endDate: string
 ): UseKelkooDataResult {
     const [data, setData] = useState<KelkooData | null>(null);
     const [loading, setLoading] = useState(true);

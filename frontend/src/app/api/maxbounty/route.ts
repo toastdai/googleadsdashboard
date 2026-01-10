@@ -63,8 +63,9 @@ let tokenExpiry: number = 0;
 
 function parseDates(request: Request) {
     const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get("start") || "2025-10-01";
-    const endDate = searchParams.get("end") || "2025-10-31";
+    const today = new Date().toISOString().split("T")[0];
+    const startDate = searchParams.get("start") || today;
+    const endDate = searchParams.get("end") || today;
     return { startDate, endDate };
 }
 
