@@ -1809,7 +1809,7 @@ export default function DashboardPage() {
                                     <p className="text-xs text-gray-500">{safeToFixed(camp.conversions, 0)} conv @ Rs.{safeToFixed(camp.cpa, 0)} CPA</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-bold text-emerald-400">{camp.safeToFixed(roas, 2)}x</p>
+                                    <p className="font-bold text-emerald-400">{safeToFixed(camp.roas, 2)}x</p>
                                     <p className="text-xs text-gray-500">ROAS</p>
                                 </div>
                             </button>
@@ -1914,7 +1914,7 @@ export default function DashboardPage() {
                                     <span className="text-[10px] font-bold text-white">KL</span>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.kelkoo.safeToFixed(roas, 2)}x</p>
+                                    <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.kelkoo.roas, 2)}x</p>
                                     <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.kelkoo.revenueInr / 1000, 0)}k rev</p>
                                 </div>
                             </div>
@@ -1925,7 +1925,7 @@ export default function DashboardPage() {
                                     <span className="text-[10px] font-bold text-white">AM</span>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.admedia.safeToFixed(roas, 2)}x</p>
+                                    <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.admedia.roas, 2)}x</p>
                                     <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.admedia.revenueInr / 1000, 0)}k rev</p>
                                 </div>
                             </div>
@@ -1936,7 +1936,7 @@ export default function DashboardPage() {
                                     <span className="text-[10px] font-bold text-white">MB</span>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.maxbounty.safeToFixed(roas, 2)}x</p>
+                                    <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.maxbounty.roas, 2)}x</p>
                                     <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.maxbounty.revenueInr / 1000, 0)}k rev</p>
                                 </div>
                             </div>
