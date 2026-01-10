@@ -88,16 +88,21 @@ class GoogleAdsService:
     
     async def get_accessible_accounts(self, credentials: Credentials) -> List[Dict[str, Any]]:
         """Get list of accessible Google Ads accounts."""
+        print(f"DEBUG get_accessible_accounts: Starting, refresh_token exists = {bool(credentials.refresh_token)}")
         try:
             client = self._create_client(credentials.refresh_token)
             
             # Query accessible customers
             customer_service = client.get_service("CustomerService")
+            print("DEBUG get_accessible_accounts: Getting accessible customers...")
             accessible = customer_service.list_accessible_customers()
+            
+            print(f"DEBUG get_accessible_accounts: Found {len(accessible.resource_names)} resource names")
             
             accounts = []
             for resource_name in accessible.resource_names:
                 customer_id = resource_name.split("/")[1]
+                print(f"DEBUG get_accessible_accounts: Checking customer {customer_id}")
                 
                 try:
                     # Get customer details
@@ -115,22 +120,32 @@ class GoogleAdsService:
                     response = ga_service.search(customer_id=customer_id, query=query)
                     
                     for row in response:
-                        accounts.append({
+                        account_data = {
                             "customer_id": str(row.customer.id),
                             "name": row.customer.descriptive_name or f"Account {row.customer.id}",
                             "currency_code": row.customer.currency_code,
                             "is_manager": row.customer.manager
-                        })
+                        }
+                        print(f"DEBUG get_accessible_accounts: Added account {account_data['customer_id']} (manager={account_data['is_manager']})")
+                        accounts.append(account_data)
                         break
                         
-                except GoogleAdsException:
+                except GoogleAdsException as gae:
                     # Skip accounts we can't access
+                    print(f"DEBUG get_accessible_accounts: GoogleAdsException for {customer_id}: {gae}")
+                    continue
+                except Exception as e:
+                    print(f"DEBUG get_accessible_accounts: Error for {customer_id}: {e}")
                     continue
             
+            print(f"DEBUG get_accessible_accounts: Returning {len(accounts)} accounts")
             return accounts
             
         except Exception as e:
-            # Return empty list on error (user may not have any accounts)
+            # Log error but return empty list
+            print(f"DEBUG get_accessible_accounts: Fatal error: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     async def validate_account_access(
