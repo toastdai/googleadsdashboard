@@ -293,7 +293,7 @@ async def get_breakdown(
     """
     Get breakdown of metrics by dimension.
     
-    Supported dimensions: campaign, device, network
+    Supported dimensions: campaign, device, network, customer_client
     """
     # Get user's account IDs if not specified
     if not account_ids:
@@ -313,6 +313,8 @@ async def get_breakdown(
         return await _get_device_breakdown(db, account_ids, start_date, end_date)
     elif dimension == "network":
         return await _get_network_breakdown(db, account_ids, start_date, end_date)
+    elif dimension == "customer_client":
+        return await _get_customer_client_breakdown(db, account_ids, start_date, end_date)
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported dimension: {dimension}")
 
@@ -494,6 +496,66 @@ async def _get_network_breakdown(
     
     return BreakdownResponse(
         dimension="network",
+        items=items,
+        total_items=len(items)
+    )
+
+
+async def _get_customer_client_breakdown(
+    db: AsyncSession,
+    account_ids: List[UUID],
+    start_date: date,
+    end_date: date
+) -> BreakdownResponse:
+    """Get metrics breakdown by customer/account."""
+    result = await db.execute(
+        select(
+            GoogleAdsAccount.id,
+            GoogleAdsAccount.name,
+            GoogleAdsAccount.customer_id,
+            func.sum(DailyMetric.impressions).label("impressions"),
+            func.sum(DailyMetric.clicks).label("clicks"),
+            func.sum(DailyMetric.cost_micros).label("cost_micros"),
+            func.sum(DailyMetric.conversions).label("conversions"),
+            func.sum(DailyMetric.conversion_value).label("conversion_value"),
+        )
+        .join(GoogleAdsAccount, DailyMetric.account_id == GoogleAdsAccount.id)
+        .where(DailyMetric.account_id.in_(account_ids))
+        .where(DailyMetric.date >= start_date)
+        .where(DailyMetric.date <= end_date)
+        .group_by(GoogleAdsAccount.id, GoogleAdsAccount.name, GoogleAdsAccount.customer_id)
+        .order_by(func.sum(DailyMetric.cost_micros).desc())
+    )
+    rows = result.all()
+    
+    total_cost = sum(Decimal(row.cost_micros or 0) for row in rows)
+    
+    items = []
+    for row in rows:
+        cost = Decimal(row.cost_micros or 0) / Decimal(1_000_000)
+        clicks = int(row.clicks or 0)
+        impressions = int(row.impressions or 0)
+        conversions = Decimal(row.conversions or 0)
+        conversion_value = Decimal(row.conversion_value or 0)
+        
+        ctr = (Decimal(clicks) / Decimal(impressions) * 100) if impressions > 0 else Decimal(0)
+        cpc = (cost / Decimal(clicks)) if clicks > 0 else Decimal(0)
+        share = (Decimal(row.cost_micros or 0) / total_cost * 100) if total_cost > 0 else Decimal(0)
+        
+        items.append(BreakdownItem(
+            name=f"{row.name} ({row.customer_id})",
+            impressions=impressions,
+            clicks=clicks,
+            cost=cost,
+            conversions=conversions,
+            conversion_value=conversion_value,
+            ctr=ctr,
+            cpc=cpc,
+            share_of_total=share
+        ))
+    
+    return BreakdownResponse(
+        dimension="customer_client",
         items=items,
         total_items=len(items)
     )
