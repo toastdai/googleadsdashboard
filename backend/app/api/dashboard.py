@@ -125,10 +125,29 @@ async def get_dashboard_summary(
     prev_cpa = (prev_cost / prev_conversions) if prev_conversions and prev_conversions > 0 else None
     prev_roas = (prev_conversion_value / prev_cost) if prev_cost and prev_cost > 0 else None
     
-    # Generate summary text
-    summary_text = f"You spent {cost:.2f}, got {int(conversions)} conversions"
+    # Generate heuristic "AI" summary
+    trends = []
+    
+    if prev and prev_cost > 0:
+        cost_change_pct = ((cost - prev_cost) / prev_cost) * 100
+        if abs(cost_change_pct) > 5:
+            direction = "increased" if cost_change_pct > 0 else "decreased"
+            trends.append(f"Spend {direction} by {abs(cost_change_pct):.0f}%")
+    
+    if prev and prev_conversions > 0:
+        conv_change_pct = ((conversions - prev_conversions) / prev_conversions) * 100
+        if abs(conv_change_pct) > 5:
+             trends.append(f"Conversions {'up' if conv_change_pct > 0 else 'down'} {abs(conv_change_pct):.0f}%")
+
+    summary_text = f"You spent ₹{cost:,.0f} and generated {int(conversions)} conversions."
+    
     if roas > 0:
-        summary_text += f", with ROAS of {roas:.2f}x"
+        summary_text += f" ROAS is {roas:.2f}x."
+        
+    if trends:
+        summary_text += " " + ", ".join(trends) + " vs previous period."
+    else:
+        summary_text += " Performance is stable compared to the previous period."
     
     return KPISummary(
         impressions=make_metric_value(impressions, prev_impressions),

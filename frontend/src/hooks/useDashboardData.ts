@@ -45,6 +45,7 @@ export function useDashboardData(startDate: string, endDate: string) {
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
     const [timeSeries, setTimeSeries] = useState<MetricTimeSeries[]>([]);
     const [topCampaigns, setTopCampaigns] = useState<BreakdownItem[]>([]);
+    const [accountBreakdown, setAccountBreakdown] = useState<BreakdownItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -77,11 +78,18 @@ export function useDashboardData(startDate: string, endDate: string) {
                     setTimeSeries(trendsData);
                 }
 
-                // 3. Fetch Top Campaigns
-                const campaignsRes = await fetch(`${apiUrl}/dashboard/breakdown/campaign${queryParams}&limit=5`, { headers });
+                // 3. Fetch Campaigns (Top 100 for now to populate table)
+                const campaignsRes = await fetch(`${apiUrl}/dashboard/breakdown/campaign${queryParams}&limit=100`, { headers });
                 if (campaignsRes.ok) {
                     const campaignsData = await campaignsRes.json();
                     setTopCampaigns(campaignsData.items || []);
+                }
+
+                // 4. Fetch Account Breakdown
+                const accountsRes = await fetch(`${apiUrl}/dashboard/breakdown/customer_client${queryParams}`, { headers });
+                if (accountsRes.ok) {
+                    const accountsData = await accountsRes.json();
+                    setAccountBreakdown(accountsData.items || []);
                 }
 
             } catch (err: any) {
@@ -101,6 +109,7 @@ export function useDashboardData(startDate: string, endDate: string) {
         summary,
         timeSeries,
         topCampaigns,
+        accountBreakdown,
         loading,
         error
     };

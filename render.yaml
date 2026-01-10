@@ -1,50 +1,45 @@
-# Render Blueprint
-# https://render.com/docs/blueprint-spec
-
 services:
-  # Backend API Service
+  # Backend Web Service (Docker)
   - type: web
-    name: googleads-dashboard-api
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    repo: https://github.com/aviralgarg05/GoogleAds-Dashboard.git
-    branch: main
-    region: oregon
+    name: googleads-dashboard-backend
+    env: docker
+    rootDir: backend
     plan: free
-    healthCheckPath: /health
+    region: singapore # Closest to user (India) usually
+    numReplicas: 1
     envVars:
-      # MongoDB Atlas Connection
-      - key: MONGODB_URL
-        sync: false # Set manually in Render dashboard
-      - key: MONGODB_DB_NAME
-        value: "tellspike"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: googleads-db
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
       - key: SECRET_KEY
         generateValue: true
-      - key: GOOGLE_ADS_DEVELOPER_TOKEN
+      # You must verify these in the Render Dashboard after creation
+      - key: GOOGLE_ADS_REFRESH_TOKEN
         sync: false
       - key: GOOGLE_ADS_CLIENT_ID
         sync: false
       - key: GOOGLE_ADS_CLIENT_SECRET
         sync: false
-      - key: GOOGLE_ADS_REFRESH_TOKEN
+      - key: GOOGLE_ADS_DEVELOPER_TOKEN
         sync: false
-      - key: REDIS_URL
+      - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
         sync: false
-      - key: ENVIRONMENT
-        value: production
-      # Telegram Bot Configuration
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
-      # Alert Configuration
-      - key: SPIKE_THRESHOLD_PERCENT
-        value: "20"
-      - key: SPIKE_CHECK_INTERVAL_MINUTES
-        value: "60"
       - key: FRONTEND_URL
-        value: "https://googleadsdashboard-beta.vercel.app"
-      # CORS Configuration
-      - key: CORS_ORIGINS
-        value: "https://googleadsdashboard-beta.vercel.app,https://googleadsdashboard.vercel.app"
+        placeholder: "https://your-vercel-app.vercel.app"
+
+databases:
+  # Managed PostgreSQL
+  - name: googleads-db
+    databaseName: tellspike
+    user: tellspike
+    plan: free
+    region: singapore
+# Optional: Redis if we need it for caching later
+# - type: redis
+#   name: googleads-cache
+#   plan: free

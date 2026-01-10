@@ -610,7 +610,7 @@ export default function DashboardPage() {
     const [networkFilter, setNetworkFilter] = useState<"all" | "kelkoo" | "admedia" | "maxbounty">("all");
 
     // Fetch Live Dashboard Data from Postgres (Sync Service)
-    const { summary: liveSummary, timeSeries: liveTrends, topCampaigns: liveTopCampaigns, loading: liveLoading } = useDashboardData(dateRange.start, dateRange.end);
+    const { summary: liveSummary, timeSeries: liveTrends, topCampaigns: liveTopCampaigns, accountBreakdown, loading: liveLoading } = useDashboardData(dateRange.start, dateRange.end);
 
     // Fetch Partner Data dynamically from API (Legacy/Partner)
     const { data: kelkooApiData, loading: kelkooLoading, error: kelkooError, isFallback: kelkooIsFallback, refetch: refetchKelkoo } = useKelkooData(dateRange.start, dateRange.end);
@@ -710,11 +710,18 @@ export default function DashboardPage() {
 
     // Enrich campaigns with live Kelkoo and Admedia data
     const liveEnrichedCampaigns = useMemo(() => {
-        let result = enrichedCampaigns;
+        // Map live backend data to Campaign interface (approx)
+        let result = liveTopCampaigns.map(c => ({
+            ...c,
+            // Map conversion_value to revenue if missing
+            revenue: c.conversion_value || 0,
+            status: "Active", // Default status as backend filters active usually, or add status to backend
+            roas: c.cost > 0 ? (c.conversion_value || 0) / c.cost : 0,
+        })) as any[];
 
         // Enrich with Kelkoo data
         if (kelkooApiData) {
-            const klCampaigns = campaigns.filter(c => detectNetwork(c.name).isKelkoo);
+            const klCampaigns = result.filter(c => detectNetwork(c.name).isKelkoo);
             const totalKLClicks = klCampaigns.reduce((sum, c) => sum + c.clicks, 0);
 
             result = result.map(campaign => {
@@ -733,7 +740,7 @@ export default function DashboardPage() {
 
         // Enrich with Admedia data
         if (admediaApiData) {
-            const amCampaigns = campaigns.filter(c => detectNetwork(c.name).isAdmedia);
+            const amCampaigns = result.filter(c => detectNetwork(c.name).isAdmedia);
             const totalAMClicks = amCampaigns.reduce((sum, c) => sum + c.clicks, 0);
 
             result = result.map(campaign => {
@@ -752,7 +759,7 @@ export default function DashboardPage() {
 
         // Enrich with MaxBounty data
         if (maxBountyApiData) {
-            const mbCampaigns = campaigns.filter(c => detectNetwork(c.name).isMaxBounty);
+            const mbCampaigns = result.filter(c => detectNetwork(c.name).isMaxBounty);
             const totalMBClicks = mbCampaigns.reduce((sum, c) => sum + c.clicks, 0);
 
             result = result.map(campaign => {
@@ -901,25 +908,36 @@ export default function DashboardPage() {
     const ctrSparkData = dailyTrend.slice(-14).map(d => d.ctr);
 
     // Chart data - use pre-formatted date labels
-    const trendData = dailyTrend.map(d => {
-        const day = Number.parseInt(d.date.split("-")[2], 10);
-        return {
-            date: `Oct ${day}`,
-            clicks: d.clicks,
-            cost: Math.round(d.cost / 1000),
-            conversions: d.conversions,
-        };
-    });
+    const trendData = useMemo(() => {
+        if (!liveTrends.length) return [];
+        // Get all unique dates
+        const clickSeries = liveTrends.find(t => t.metric === 'clicks')?.data || [];
+        const costSeries = liveTrends.find(t => t.metric === 'cost')?.data || [];
+        const convSeries = liveTrends.find(t => t.metric === 'conversions')?.data || [];
 
-    const accountData = accountBreakdown.map(a => ({
-        name: a.account,
+        // Use click series as base for dates, or just map them
+        return clickSeries.map((d: any) => {
+            const dateObj = new Date(d.date);
+            // Format: "Oct 1"
+            const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            return {
+                date: dateLabel,
+                clicks: d.value,
+                cost: costSeries.find((c: any) => c.date === d.date)?.value || 0,
+                conversions: convSeries.find((c: any) => c.date === d.date)?.value || 0,
+            };
+        });
+    }, [liveTrends]);
+
+    const accountData = useMemo(() => accountBreakdown.map(a => ({
+        name: a.name, // "account" vs "name" - check hook type
         value: a.cost,
-        campaigns: a.campaigns,
+        campaigns: 0, // Not currently returned by backend breakdown
         clicks: a.clicks,
-    }));
+    })), [accountBreakdown]);
 
-    const campaignCostData = campaigns
-        .sort((a, b) => b.cost - a.cost)
+    const campaignCostData = liveTopCampaigns
         .slice(0, 10)
         .map(c => ({
             name: c.name.length > 20 ? c.name.slice(0, 20) + "..." : c.name,
@@ -1178,7 +1196,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Stats Bar */}
-            <QuickStatsBar campaigns={campaigns} />
+            <QuickStatsBar campaigns={liveTopCampaigns as any[]} />
 
             {/* View Banner - Shows different content based on selected tab */}
             <ViewBanner view={selectedView} liveKelkooRevenueInr={liveKelkooAggregates.totalRevenueInr + liveKelkooAggregates.totalSaleValueInr} />
@@ -1194,11 +1212,16 @@ export default function DashboardPage() {
                     <div>
                         <p className="font-medium text-sm text-purple-400 mb-2">Performance Intelligence</p>
                         <p className="text-lg leading-relaxed text-gray-200">
-                            You spent <span className="font-bold text-amber-400">{formatCurrency(totals.cost)}</span> and generated{" "}
-                            <span className="font-bold text-emerald-400">{formatNumber(totals.conversions)} conversions</span> at{" "}
-                            <span className="font-bold text-purple-400">{avgROAS.toFixed(2)}x ROAS</span>.{" "}
-                            <span className="text-cyan-400 font-semibold">{aiMetrics.highPerformers} campaigns</span> rated A/B,{" "}
-                            <span className="text-rose-400 font-semibold">{aiMetrics.atRiskCampaigns} at risk</span>.{" "}
+                            {liveSummary?.summary_text ? (
+                                <span className="text-gray-200">{liveSummary.summary_text}</span>
+                            ) : (
+                                <>
+                                    You spent <span className="font-bold text-amber-400">{formatCurrency(totals.cost)}</span> and generated{" "}
+                                    <span className="font-bold text-emerald-400">{formatNumber(totals.conversions)} conversions</span> at{" "}
+                                    <span className="font-bold text-purple-400">{avgROAS.toFixed(2)}x ROAS</span>.
+                                </>
+                            )}
+                            {" "}
                             <span className="text-gray-400">
                                 Kelkoo: <span className="text-emerald-400">{liveKelkooAggregates.totalLeads.toLocaleString()}</span> leads (€{liveKelkooAggregates.totalRevenueEur.toLocaleString()}).{" "}
                                 Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads (${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).{" "}
@@ -1641,13 +1664,13 @@ export default function DashboardPage() {
                     <h2 className="text-lg font-display font-semibold text-white mb-4">Cost by Account</h2>
                     <MetricsPieChart data={accountData} height={240} innerRadius={60} showLabels={false} />
                     <div className="mt-4 space-y-2">
-                        {accountBreakdown.map((acc, i) => (
-                            <div key={acc.account} className="flex items-center justify-between text-sm">
+                        {accountData.map((acc, i) => (
+                            <div key={acc.name} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2">
                                     <div className={`w-3 h-3 rounded-full ${i === 0 ? "bg-purple-500" : i === 1 ? "bg-cyan-500" : "bg-emerald-500"}`} />
-                                    <span className="text-gray-300">{acc.account}</span>
+                                    <span className="text-gray-300">{acc.name}</span>
                                 </div>
-                                <span className="font-medium text-white">{formatCurrency(acc.cost)}</span>
+                                <span className="font-medium text-white">{formatCurrency(acc.value)}</span>
                             </div>
                         ))}
                     </div>
@@ -1693,18 +1716,18 @@ export default function DashboardPage() {
                     <h2 className="text-lg font-display font-semibold text-white mb-4">Account Performance</h2>
                     <div className="space-y-4">
                         {accountBreakdown.map((acc, i) => (
-                            <div key={acc.account} className="p-4 rounded-xl bg-gray-800/30 border border-gray-700/50 hover:border-gray-600 transition-colors">
+                            <div key={acc.name} className="p-4 rounded-xl bg-gray-800/30 border border-gray-700/50 hover:border-gray-600 transition-colors">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white ${i === 0 ? "bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30" :
                                             i === 1 ? "bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-lg shadow-cyan-500/30" :
                                                 "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30"
                                             }`}>
-                                            {acc.account.charAt(0)}
+                                            {acc.name.charAt(0)}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-white">{acc.account}</p>
-                                            <p className="text-xs text-gray-500">{acc.campaigns} campaigns</p>
+                                            <p className="font-semibold text-white">{acc.name}</p>
+                                            {/* <p className="text-xs text-gray-500">{acc.campaigns} campaigns</p> */}
                                         </div>
                                     </div>
                                     <p className="text-lg font-bold text-white">{formatCurrency(acc.cost)}</p>
