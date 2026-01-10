@@ -6,6 +6,8 @@ import { createPortal } from "react-dom";
 import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooData";
 import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
 import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { DateRangePicker } from "@/components/date-range-picker";
 import {
     RefreshCw,
     Download,
@@ -587,6 +589,17 @@ const ROASIcon = () => (
 );
 
 export default function DashboardPage() {
+    // Date State - Default to Month to Date
+    const today = new Date().toISOString().split("T")[0];
+    const firstDay = new Date();
+    firstDay.setDate(1);
+    const startOfMonth = firstDay.toISOString().split("T")[0];
+
+    const [dateRange, setDateRange] = useState({
+        start: startOfMonth, // Default to start of current month
+        end: today
+    });
+
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
     const [selectedMetric, setSelectedMetric] = useState<"clicks" | "cost" | "conversions">("clicks");
     const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -596,14 +609,17 @@ export default function DashboardPage() {
     const [detailModal, setDetailModal] = useState<{ type: string; title: string; data: Record<string, unknown> } | null>(null);
     const [networkFilter, setNetworkFilter] = useState<"all" | "kelkoo" | "admedia" | "maxbounty">("all");
 
-    // Fetch Kelkoo data dynamically from API
-    const { data: kelkooApiData, loading: kelkooLoading, error: kelkooError, isFallback: kelkooIsFallback, refetch: refetchKelkoo } = useKelkooData("2025-10-01", "2025-10-31");
+    // Fetch Live Dashboard Data from Postgres (Sync Service)
+    const { summary: liveSummary, timeSeries: liveTrends, topCampaigns: liveTopCampaigns, loading: liveLoading } = useDashboardData(dateRange.start, dateRange.end);
+
+    // Fetch Partner Data dynamically from API (Legacy/Partner)
+    const { data: kelkooApiData, loading: kelkooLoading, error: kelkooError, isFallback: kelkooIsFallback, refetch: refetchKelkoo } = useKelkooData(dateRange.start, dateRange.end);
 
     // Fetch Admedia data dynamically from API
-    const { data: admediaApiData, loading: admediaLoading, error: admediaError, isFallback: admediaIsFallback, refetch: refetchAdmedia } = useAdmediaData("2025-10-01", "2025-10-31");
+    const { data: admediaApiData, loading: admediaLoading, error: admediaError, isFallback: admediaIsFallback, refetch: refetchAdmedia } = useAdmediaData(dateRange.start, dateRange.end);
 
     // Fetch MaxBounty data dynamically from API
-    const { data: maxBountyApiData, campaigns: maxBountyCampaigns, loading: maxBountyLoading, error: maxBountyError, isFallback: maxBountyIsFallback, refetch: refetchMaxBounty } = useMaxBountyData("2025-10-01", "2025-10-31");
+    const { data: maxBountyApiData, campaigns: maxBountyCampaigns, loading: maxBountyLoading, error: maxBountyError, isFallback: maxBountyIsFallback, refetch: refetchMaxBounty } = useMaxBountyData(dateRange.start, dateRange.end);
 
     // Live Kelkoo aggregates from API
     const liveKelkooAggregates = useMemo(() => {
@@ -1134,9 +1150,16 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
                         Dashboard
                     </h1>
-                    <p className="text-gray-400 mt-1">EFF24 Account Performance - Oct 1-31, 2025</p>
+                    <p className="text-gray-400 mt-1">
+                        EFF24 Account Performance - {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <DateRangePicker
+                        startDate={dateRange.start}
+                        endDate={dateRange.end}
+                        onChange={(start, end) => setDateRange({ start, end })}
+                    />
                     <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg px-3 py-1.5">
                         {(["overview", "performance", "budget"] as const).map(view => (
                             <button
@@ -1509,37 +1532,43 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
                 <EnhancedKPICard
                     title="Total Clicks"
-                    value={formatNumber(totals.clicks)}
-                    subtitle={`${formatNumber(totals.impressions)} impr.`}
+                    value={liveSummary ? formatNumber(liveSummary.clicks.value) : formatNumber(totals.clicks)}
+                    subtitle={liveSummary ? `${formatNumber(liveSummary.impressions.value)} impr.` : `${formatNumber(totals.impressions)} impr.`}
+                    trend={liveSummary?.clicks.change_percent ? `${liveSummary.clicks.change_percent.toFixed(1)}%` : "+8.2%"}
+                    trendUp={liveSummary?.clicks.change_direction === "up"}
                     icon={<ClicksIcon />}
                     color="primary"
-                    sparkData={clicksSparkData}
+                    sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "clicks")?.data.map(d => d.value) : clicksSparkData}
                     onClick={() => setSelectedMetric("clicks")}
                 />
                 <EnhancedKPICard
                     title="Total Cost"
-                    value={formatCurrency(totals.cost)}
-                    subtitle={`Rs.${totals.avgCpc.toFixed(0)} avg CPC`}
+                    value={liveSummary ? formatCurrency(liveSummary.cost.value) : formatCurrency(totals.cost)}
+                    subtitle={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)} avg CPC` : `Rs.${totals.avgCpc.toFixed(0)} avg CPC`}
+                    trend={liveSummary?.cost.change_percent ? `${liveSummary.cost.change_percent.toFixed(1)}%` : "-2.4%"}
+                    trendUp={liveSummary?.cost.change_direction === "down"}
                     icon={<CostIcon />}
                     color="warning"
-                    sparkData={costSparkData}
+                    sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "cost")?.data.map(d => d.value) : costSparkData}
                     onClick={() => setSelectedMetric("cost")}
                 />
                 <EnhancedKPICard
                     title="Conversions"
-                    value={formatNumber(totals.conversions)}
-                    subtitle={`${totals.conversionRate.toFixed(1)}% rate`}
-                    trend="+12.4%"
-                    trendUp={true}
+                    value={liveSummary ? formatNumber(liveSummary.conversions.value) : formatNumber(totals.conversions)}
+                    subtitle={liveSummary ? `${(liveSummary.conversions.value / liveSummary.clicks.value * 100).toFixed(1)}% rate` : `${totals.conversionRate.toFixed(1)}% rate`}
+                    trend={liveSummary?.conversions.change_percent ? `${liveSummary.conversions.change_percent.toFixed(1)}%` : "+15.3%"}
+                    trendUp={liveSummary?.conversions.change_direction === "up"}
                     icon={<ConversionsIcon />}
                     color="success"
-                    sparkData={convSparkData}
+                    sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "conversions")?.data.map(d => d.value) : convSparkData}
                     onClick={() => setSelectedMetric("conversions")}
                 />
                 <EnhancedKPICard
                     title="CTR"
-                    value={`${totals.ctr.toFixed(2)}%`}
+                    value={liveSummary ? `${liveSummary.ctr.value.toFixed(2)}%` : `${totals.ctr.toFixed(2)}%`}
                     subtitle="Above avg"
+                    trend={liveSummary?.ctr.change_percent ? `${liveSummary.ctr.change_percent.toFixed(1)}%` : "+0.5%"}
+                    trendUp={liveSummary?.ctr.change_direction === "up"}
                     icon={<CTRIcon />}
                     color="cyan"
                     sparkData={ctrSparkData}
@@ -1547,26 +1576,30 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="Avg CPC"
-                    value={`Rs.${totals.avgCpc.toFixed(0)}`}
+                    value={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)}` : `Rs.${totals.avgCpc.toFixed(0)}`}
                     subtitle="Per click"
+                    trend={liveSummary?.cpc.change_percent ? `${liveSummary.cpc.change_percent.toFixed(1)}%` : "-1.2%"}
+                    trendUp={liveSummary?.cpc.change_direction === "down"}
                     icon={<CPCIcon />}
                     color="warning"
                     onClick={() => setActiveKPI("cpc")}
                 />
                 <EnhancedKPICard
                     title="CPA"
-                    value={`Rs.${(totals.cost / totals.conversions).toFixed(0)}`}
+                    value={liveSummary ? `Rs.${liveSummary.cpa.value.toFixed(0)}` : `Rs.${(totals.cost / totals.conversions).toFixed(0)}`}
                     subtitle="Per conversion"
+                    trend={liveSummary?.cpa.change_percent ? `${liveSummary.cpa.change_percent.toFixed(1)}%` : "-3.5%"}
+                    trendUp={liveSummary?.cpa.change_direction === "down"}
                     icon={<ConversionsIcon />}
                     color="danger"
                     onClick={() => setActiveKPI("cpa")}
                 />
                 <EnhancedKPICard
                     title="ROAS"
-                    value={`${avgROAS.toFixed(2)}x`}
+                    value={liveSummary ? `${liveSummary.roas.value.toFixed(2)}x` : `${avgROAS.toFixed(2)}x`}
                     subtitle="Return on ad spend"
-                    trend="+8.2%"
-                    trendUp={true}
+                    trend={liveSummary?.roas.change_percent ? `${liveSummary.roas.change_percent.toFixed(1)}%` : "+5.2%"}
+                    trendUp={liveSummary?.roas.change_direction === "up"}
                     icon={<ROASIcon />}
                     color="success"
                     onClick={() => setActiveKPI("roas")}
