@@ -9,12 +9,14 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.database import get_db
 from app.services.google_ads import GoogleAdsService
 from app.services.sync_service import SyncService
 from app.services.auth import get_current_user
 from app.models.user import User
+from app.models.account import GoogleAdsAccount
 from app.config import settings
 
 
@@ -45,28 +47,31 @@ async def trigger_manual_sync(
         google_ads_service = GoogleAdsService()
         sync_service = SyncService(db, google_ads_service)
         
-        # Get credentials from settings
-        manager_id = settings.google_ads_login_customer_id
-        refresh_token = settings.google_ads_refresh_token
+        # Get user's Google Ads account (manager account with refresh token)
+        result = await db.execute(
+            select(GoogleAdsAccount)
+            .where(GoogleAdsAccount.user_id == current_user.id)
+            .where(GoogleAdsAccount.is_manager == True)
+            .limit(1)
+        )
+        manager_account = result.scalar_one_or_none()
         
-        if not manager_id or not refresh_token:
-            error_details = []
-            if not manager_id:
-                error_details.append("GOOGLE_ADS_LOGIN_CUSTOMER_ID is not set")
-            if not refresh_token:
-                error_details.append("GOOGLE_ADS_REFRESH_TOKEN is not set")
-            
+        if not manager_account:
             raise HTTPException(
                 status_code=400,
-                detail=f"Google Ads credentials not configured on backend: {', '.join(error_details)}"
+                detail="No Google Ads manager account found. Please connect your account first."
             )
+        
+        # Use the manager account's customer ID and refresh token
+        manager_id = manager_account.customer_id
+        refresh_token = manager_account.refresh_token
+        
+        # Debug logging
+        print(f"DEBUG: Using manager account {manager_id} for user {current_user.email}")
+        print(f"DEBUG: Refresh token exists = {bool(refresh_token)}")
         
         # Ensure manager_id is properly formatted (10 digits, no hyphens)
         manager_id = str(manager_id).replace("-", "")
-        
-        # Debug logging
-        print(f"DEBUG: manager_id = {manager_id}, type = {type(manager_id)}, len = {len(manager_id)}")
-        print(f"DEBUG: refresh_token exists = {bool(refresh_token)}, first 20 chars = {refresh_token[:20] if refresh_token else 'None'}")
         
         # Run sync
         await sync_service.sync_all_accounts(
