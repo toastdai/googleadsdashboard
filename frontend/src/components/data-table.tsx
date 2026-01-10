@@ -2,6 +2,13 @@
 
 import { useState, useRef } from "react";
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 interface DataTableColumn<T> {
     key: keyof T | string;
     header: string;
@@ -84,13 +91,13 @@ export function DataTable<T extends Record<string, any>>({
         switch (format) {
             case "currency":
                 if (typeof value === "number") {
-                    if (value >= 100000) return `Rs.${(value / 100000).toFixed(2)}L`;
-                    if (value >= 1000) return `Rs.${(value / 1000).toFixed(2)}K`;
-                    return `Rs.${value.toFixed(2)}`;
+                    if (value >= 100000) return `Rs.${safeToFixed(value / 100000, 2)}L`;
+                    if (value >= 1000) return `Rs.${safeToFixed(value / 1000, 2)}K`;
+                    return `Rs.${safeToFixed(value, 2)}`;
                 }
                 return String(value);
             case "percent":
-                return typeof value === "number" ? `${value.toFixed(2)}%` : String(value);
+                return typeof value === "number" ? `${safeToFixed(value, 2)}%` : String(value);
             case "number":
                 return typeof value === "number" ? value.toLocaleString() : String(value);
             case "date":

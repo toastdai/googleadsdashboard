@@ -1,5 +1,12 @@
 import { MetricValue } from "@/lib/api";
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 interface KPICardProps {
     title: string;
     value: string | number;
@@ -38,18 +45,18 @@ export function KPICard({
         switch (format) {
             case "currency":
                 if (val >= 100000) {
-                    return `${currencySymbol}${(val / 100000).toFixed(2)}L`;
+                    return `${currencySymbol}${safeToFixed(val / 100000, 2)}L`;
                 } else if (val >= 1000) {
-                    return `${currencySymbol}${(val / 1000).toFixed(2)}K`;
+                    return `${currencySymbol}${safeToFixed(val / 1000, 2)}K`;
                 }
-                return `${currencySymbol}${val.toFixed(2)}`;
+                return `${currencySymbol}${safeToFixed(val, 2)}`;
             case "percent":
-                return `${val.toFixed(2)}%`;
+                return `${safeToFixed(val, 2)}%`;
             default:
                 if (val >= 1000000) {
-                    return `${(val / 1000000).toFixed(2)}M`;
+                    return `${safeToFixed(val / 1000000, 2)}M`;
                 } else if (val >= 1000) {
-                    return `${(val / 1000).toFixed(2)}K`;
+                    return `${safeToFixed(val / 1000, 2)}K`;
                 }
                 return val.toLocaleString();
         }
@@ -110,7 +117,7 @@ export function KPICard({
                             <div className="flex items-center gap-2 mt-2">
                                 <span className={`${getBadgeClass()} inline-flex items-center gap-1`}>
                                     {metric.change_direction === "up" ? <ArrowUpIcon /> : <ArrowDownIcon />}
-                                    {Math.abs(metric.change_percent).toFixed(1)}%
+                                    {safeToFixed(Math.abs(metric.change_percent), 1)}%
                                 </span>
                                 <span className="text-xs text-muted-foreground">vs prev period</span>
                             </div>

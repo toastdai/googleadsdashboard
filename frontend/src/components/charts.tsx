@@ -20,6 +20,13 @@ import {
     ReferenceLine,
 } from "recharts";
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 // Color palette for charts - explicit hex values for dark mode compatibility
 const COLORS = {
     primary: "#8b5cf6",
@@ -64,15 +71,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 // Format axis values
 const formatAxisValue = (value: number, format: string = "number"): string => {
     if (format === "currency") {
-        if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-        if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
-        return `₹${value.toFixed(0)}`;
+        if (value >= 100000) return `₹${safeToFixed(value / 100000, 1)}L`;
+        if (value >= 1000) return `₹${safeToFixed(value / 1000, 1)}K`;
+        return `₹${safeToFixed(value, 0)}`;
     }
     if (format === "percent") {
-        return `${value.toFixed(1)}%`;
+        return `${safeToFixed(value, 1)}%`;
     }
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    if (value >= 1000000) return `${safeToFixed(value / 1000000, 1)}M`;
+    if (value >= 1000) return `${safeToFixed(value / 1000, 1)}K`;
     return value.toLocaleString();
 };
 
@@ -345,7 +352,7 @@ export function MetricsPieChart({
                         outerRadius="80%"
                         paddingAngle={2}
                         dataKey="value"
-                        label={showLabels ? ({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%` : false}
+                        label={showLabels ? ({ name, percent }) => `${name}: ${safeToFixed((percent || 0) * 100, 0)}%` : false}
                         labelLine={showLabels}
                     >
                         {data.map((entry, index) => (
@@ -397,7 +404,7 @@ export function GaugeChart({ value, max, label, color = COLORS.primary, size = 1
                     />
                 </svg>
                 <div className="absolute inset-0 flex items-end justify-center pb-1">
-                    <span className="text-lg font-bold" style={{ color }}>{percentage.toFixed(0)}%</span>
+                    <span className="text-lg font-bold" style={{ color }}>{safeToFixed(percentage, 0)}%</span>
                 </div>
             </div>
             <span className="text-xs text-muted-foreground mt-1">{label}</span>
@@ -475,7 +482,7 @@ export function ProgressBar({ value, max, label, showValue = true, color = "prim
             {(label || showValue) && (
                 <div className="flex justify-between text-xs mb-1">
                     {label && <span className="text-muted-foreground">{label}</span>}
-                    {showValue && <span className="font-medium">{percentage.toFixed(0)}%</span>}
+                    {showValue && <span className="font-medium">{safeToFixed(percentage, 0)}%</span>}
                 </div>
             )}
             <div className={`w-full bg-gray-700 rounded-full ${heights[size]} overflow-hidden`}>
