@@ -1210,7 +1210,7 @@ export default function DashboardPage() {
                     return (
                         <div className="text-right">
                             <p className={`font-medium ${(value || 0) >= 1 ? "text-emerald-400" : "text-red-400"}`}>
-                                {(value || 0).toFixed(2)}x
+                                {safeToFixed(value || 0, 2)}x
                             </p>
                             <p className={`text-xs ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                                 {profit >= 0 ? "+" : ""}₹{profit.toLocaleString()}
@@ -1324,7 +1324,7 @@ export default function DashboardPage() {
                                 <>
                                     You spent <span className="font-bold text-amber-400">{formatCurrency(totals.cost)}</span> and generated{" "}
                                     <span className="font-bold text-emerald-400">{formatNumber(totals.conversions)} conversions</span> at{" "}
-                                    <span className="font-bold text-purple-400">{avgROAS.toFixed(2)}x ROAS</span>.
+                                    <span className="font-bold text-purple-400">{safeToFixed(avgROAS, 2)}x ROAS</span>.
                                 </>
                             )}
                             {" "}
@@ -1494,16 +1494,16 @@ export default function DashboardPage() {
                         <div>
                             <p className="text-xs text-gray-500">Conv. Rate</p>
                             <p className="text-base font-semibold text-white">
-                                {liveKelkooAggregates.conversionRate.toFixed(2)}%
+                                {safeToFixed(liveKelkooAggregates.conversionRate, 2)}%
                             </p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Value/Lead</p>
                             <p className="text-base font-semibold text-white">
-                                €{liveKelkooAggregates.vpl.toFixed(2)}
+                                €{safeToFixed(liveKelkooAggregates.vpl, 2)}
                             </p>
                             <p className="text-xs text-gray-400">
-                                ₹{(liveKelkooAggregates.vpl * 89.5).toFixed(2)}
+                                ₹{safeToFixed(liveKelkooAggregates.vpl * 89.5, 2)}
                             </p>
                         </div>
                     </div>
@@ -1563,7 +1563,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Conv Rate</p>
-                            <p className="text-xl font-bold text-purple-400">{liveAdmediaAggregates.conversionRate.toFixed(1)}%</p>
+                            <p className="text-xl font-bold text-purple-400">{safeToFixed(liveAdmediaAggregates.conversionRate, 1)}%</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Earnings</p>
@@ -1572,13 +1572,13 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">CPC</p>
-                            <p className="text-base font-semibold text-white">${liveAdmediaAggregates.cpc.toFixed(2)}</p>
-                            <p className="text-xs text-gray-400">₹{(liveAdmediaAggregates.cpc * 83.5).toFixed(2)}</p>
+                            <p className="text-base font-semibold text-white">${safeToFixed(liveAdmediaAggregates.cpc, 2)}</p>
+                            <p className="text-xs text-gray-400">₹{safeToFixed(liveAdmediaAggregates.cpc * 83.5, 2)}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">CPL</p>
-                            <p className="text-base font-semibold text-white">${liveAdmediaAggregates.cpl.toFixed(2)}</p>
-                            <p className="text-xs text-gray-400">₹{(liveAdmediaAggregates.cpl * 83.5).toFixed(2)}</p>
+                            <p className="text-base font-semibold text-white">${safeToFixed(liveAdmediaAggregates.cpl, 2)}</p>
+                            <p className="text-xs text-gray-400">₹{safeToFixed(liveAdmediaAggregates.cpl * 83.5, 2)}</p>
                         </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
@@ -1637,7 +1637,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Conv Rate</p>
-                            <p className="text-xl font-bold text-purple-400">{liveMaxBountyAggregates.conversion.toFixed(1)}%</p>
+                            <p className="text-xl font-bold text-purple-400">{safeToFixed(liveMaxBountyAggregates.conversion, 1)}%</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Earnings</p>
@@ -1646,7 +1646,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">EPC</p>
-                            <p className="text-base font-semibold text-white">${liveMaxBountyAggregates.epc.toFixed(2)}</p>
+                            <p className="text-base font-semibold text-white">${safeToFixed(liveMaxBountyAggregates.epc, 2)}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Sales Value</p>
@@ -1663,7 +1663,7 @@ export default function DashboardPage() {
                     title="Total Clicks"
                     value={liveSummary ? formatNumber(liveSummary.clicks.value) : formatNumber(totals.clicks)}
                     subtitle={liveSummary ? `${formatNumber(liveSummary.impressions.value)} impr.` : `${formatNumber(totals.impressions)} impr.`}
-                    trend={liveSummary?.clicks.change_percent ? `${liveSummary.clicks.change_percent.toFixed(1)}%` : "+8.2%"}
+                    trend={liveSummary?.clicks.change_percent ? `${safeToFixed(liveSummary.clicks.change_percent, 1)}%` : "+8.2%"}
                     trendUp={liveSummary?.clicks.change_direction === "up"}
                     icon={<ClicksIcon />}
                     color="primary"
@@ -1673,8 +1673,8 @@ export default function DashboardPage() {
                 <EnhancedKPICard
                     title="Total Cost"
                     value={liveSummary ? formatCurrency(liveSummary.cost.value) : formatCurrency(totals.cost)}
-                    subtitle={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)} avg CPC` : `Rs.${safeToFixed(totals.avgCpc, 0)} avg CPC`}
-                    trend={liveSummary?.cost.change_percent ? `${liveSummary.cost.change_percent.toFixed(1)}%` : "-2.4%"}
+                    subtitle={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)} avg CPC` : `Rs.${safeToFixed(totals.avgCpc, 0)} avg CPC`}
+                    trend={liveSummary?.cost.change_percent ? `${safeToFixed(liveSummary.cost.change_percent, 1)}%` : "-2.4%"}
                     trendUp={liveSummary?.cost.change_direction === "down"}
                     icon={<CostIcon />}
                     color="warning"
@@ -1684,8 +1684,8 @@ export default function DashboardPage() {
                 <EnhancedKPICard
                     title="Conversions"
                     value={liveSummary ? formatNumber(liveSummary.conversions.value) : formatNumber(totals.conversions)}
-                    subtitle={liveSummary ? `${(liveSummary.conversions.value / liveSummary.clicks.value * 100).toFixed(1)}% rate` : `${conversionRate.toFixed(1)}% rate`}
-                    trend={liveSummary?.conversions.change_percent ? `${liveSummary.conversions.change_percent.toFixed(1)}%` : "+15.3%"}
+                    subtitle={liveSummary ? `${safeToFixed(liveSummary.conversions.value / liveSummary.clicks.value * 100, 1)}% rate` : `${safeToFixed(conversionRate, 1)}% rate`}
+                    trend={liveSummary?.conversions.change_percent ? `${safeToFixed(liveSummary.conversions.change_percent, 1)}%` : "+15.3%"}
                     trendUp={liveSummary?.conversions.change_direction === "up"}
                     icon={<ConversionsIcon />}
                     color="success"
@@ -1717,7 +1717,7 @@ export default function DashboardPage() {
                     title="CPA"
                     value={liveSummary ? `Rs.${liveSummary.cpa.value.toFixed(0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
                     subtitle="Per conversion"
-                    trend={liveSummary?.cpa.change_percent ? `${liveSummary.cpa.change_percent.toFixed(1)}%` : "-3.5%"}
+                    trend={liveSummary?.cpa.change_percent ? `${safeToFixed(liveSummary.cpa.change_percent, 1)}%` : "-3.5%"}
                     trendUp={liveSummary?.cpa.change_direction === "down"}
                     icon={<ConversionsIcon />}
                     color="danger"
@@ -1725,9 +1725,9 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="ROAS"
-                    value={liveSummary ? `${liveSummary.roas.safeToFixed(value, 2)}x` : `${avgROAS.toFixed(2)}x`}
+                    value={liveSummary ? `${safeToFixed(liveSummary.roas.value, 2)}x` : `${safeToFixed(avgROAS, 2)}x`}
                     subtitle="Return on ad spend"
-                    trend={liveSummary?.roas.change_percent ? `${liveSummary.roas.change_percent.toFixed(1)}%` : "+5.2%"}
+                    trend={liveSummary?.roas.change_percent ? `${safeToFixed(liveSummary.roas.change_percent, 1)}%` : "+5.2%"}
                     trendUp={liveSummary?.roas.change_direction === "up"}
                     icon={<ROASIcon />}
                     color="success"
@@ -1806,7 +1806,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-white truncate">{camp.name}</p>
-                                    <p className="text-xs text-gray-500">{camp.conversions.toFixed(0)} conv @ Rs.{camp.cpa.toFixed(0)} CPA</p>
+                                    <p className="text-xs text-gray-500">{safeToFixed(camp.conversions, 0)} conv @ Rs.{safeToFixed(camp.cpa, 0)} CPA</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-emerald-400">{camp.safeToFixed(roas, 2)}x</p>
@@ -1856,7 +1856,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div>
                                         <p className="text-gray-500 text-xs">CPA</p>
-                                        <p className="font-medium text-white">Rs.{(acc.cost / acc.conversions).toFixed(0)}</p>
+                                        <p className="font-medium text-white">Rs.{safeToFixed(acc.cost / acc.conversions, 0)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1915,7 +1915,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.kelkoo.safeToFixed(roas, 2)}x</p>
-                                    <p className="text-[10px] text-gray-400">₹{(networkComparison.kelkoo.revenueInr / 1000).toFixed(0)}k rev</p>
+                                    <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.kelkoo.revenueInr / 1000, 0)}k rev</p>
                                 </div>
                             </div>
                         </div>
@@ -1926,7 +1926,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.admedia.safeToFixed(roas, 2)}x</p>
-                                    <p className="text-[10px] text-gray-400">₹{(networkComparison.admedia.revenueInr / 1000).toFixed(0)}k rev</p>
+                                    <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.admedia.revenueInr / 1000, 0)}k rev</p>
                                 </div>
                             </div>
                         </div>
@@ -1937,7 +1937,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.maxbounty.safeToFixed(roas, 2)}x</p>
-                                    <p className="text-[10px] text-gray-400">₹{(networkComparison.maxbounty.revenueInr / 1000).toFixed(0)}k rev</p>
+                                    <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.maxbounty.revenueInr / 1000, 0)}k rev</p>
                                 </div>
                             </div>
                         </div>
@@ -1981,7 +1981,7 @@ export default function DashboardPage() {
                                     {activeKPI === "ctr" && `${safeToFixed(totals.ctr, 2)}%`}
                                     {activeKPI === "cpc" && `Rs.${safeToFixed(totals.avgCpc, 0)}`}
                                     {activeKPI === "cpa" && `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
-                                    {activeKPI === "roas" && `${avgROAS.toFixed(2)}x`}
+                                    {activeKPI === "roas" && `${safeToFixed(avgROAS, 2)}x`}
                                 </p>
                             </div>
                             <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
@@ -1990,7 +1990,7 @@ export default function DashboardPage() {
                                     {activeKPI === "ctr" && (
                                         <>
                                             <li>- Average CTR of {safeToFixed(totals.ctr, 2)}% is above industry average</li>
-                                            <li>- Best performer: {topPerformers[0]?.name} at {topPerformers[0]?.ctr.toFixed(2)}%</li>
+                                            <li>- Best performer: {topPerformers[0]?.name} at {safeToFixed(topPerformers[0]?.ctr, 2)}%</li>
                                             <li>- {liveEnrichedCampaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
                                         </>
                                     )}
@@ -2010,7 +2010,7 @@ export default function DashboardPage() {
                                     )}
                                     {activeKPI === "roas" && (
                                         <>
-                                            <li>- Average ROAS: {avgROAS.toFixed(2)}x return on ad spend</li>
+                                            <li>- Average ROAS: {safeToFixed(avgROAS, 2)}x return on ad spend</li>
                                             <li>- {liveEnrichedCampaigns.filter(c => c.conversions > 200).length} campaigns with 200+ conversions</li>
                                             <li>- Total ad spend: {formatCurrency(totals.cost)}</li>
                                         </>
@@ -2025,10 +2025,10 @@ export default function DashboardPage() {
                                             <span className="text-xs text-gray-500 w-6">{i + 1}</span>
                                             <span className="text-sm text-gray-300 flex-1 truncate">{camp.name}</span>
                                             <span className="text-sm font-medium text-white">
-                                                {activeKPI === "ctr" ? `${camp.ctr.toFixed(2)}%` :
-                                                    activeKPI === "cpc" ? `Rs.${camp.avgCpc.toFixed(0)}` :
-                                                        activeKPI === "cpa" ? `Rs.${(camp.cost / Math.max(camp.conversions, 1)).toFixed(0)}` :
-                                                            `${(camp.conversions * 175 / camp.cost).toFixed(2)}x`}
+                                                {activeKPI === "ctr" ? `${safeToFixed(camp.ctr, 2)}%` :
+                                                    activeKPI === "cpc" ? `Rs.${safeToFixed(camp.avgCpc, 0)}` :
+                                                        activeKPI === "cpa" ? `Rs.${safeToFixed(camp.cost / Math.max(camp.conversions, 1), 0)}` :
+                                                            `${safeToFixed(camp.conversions * 175 / camp.cost, 2)}x`}
                                             </span>
                                         </div>
                                     ))}
@@ -2090,11 +2090,11 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">Conversion Rate</p>
-                                            <p className="text-2xl font-bold text-amber-400">{(detailModal.data.conversionRate as number).toFixed(2)}%</p>
+                                            <p className="text-2xl font-bold text-amber-400">{safeToFixed(detailModal.data.conversionRate as number, 2)}%</p>
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">Value Per Lead</p>
-                                            <p className="text-2xl font-bold text-white">€{(detailModal.data.revenuePerLead as number).toFixed(2)}</p>
+                                            <p className="text-2xl font-bold text-white">€{safeToFixed(detailModal.data.revenuePerLead as number, 2)}</p>
                                         </div>
                                     </div>
 
@@ -2113,7 +2113,7 @@ export default function DashboardPage() {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className={`text-sm font-bold ${(camp.actualROAS || 0) >= 1 ? "text-emerald-400" : "text-red-400"}`}>
-                                                        {(camp.actualROAS || 0).toFixed(2)}x
+                                                        {safeToFixed(camp.actualROAS || 0, 2)}x
                                                     </p>
                                                     <p className={`text-xs ${(camp.profitability || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                                                         Rs.{(camp.profitability || 0).toLocaleString()}
@@ -2165,15 +2165,15 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">Conv. Rate</p>
-                                            <p className="text-2xl font-bold text-purple-400">{(detailModal.data.conversionRate as number).toFixed(1)}%</p>
+                                            <p className="text-2xl font-bold text-purple-400">{safeToFixed(detailModal.data.conversionRate as number, 1)}%</p>
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">CPC</p>
-                                            <p className="text-2xl font-bold text-white">${(detailModal.data.cpc as number).toFixed(2)}</p>
+                                            <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.cpc as number, 2)}</p>
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">CPL</p>
-                                            <p className="text-2xl font-bold text-white">${(detailModal.data.cpl as number).toFixed(2)}</p>
+                                            <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.cpl as number, 2)}</p>
                                         </div>
                                     </div>
 
@@ -2236,11 +2236,11 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">Conv. Rate</p>
-                                            <p className="text-2xl font-bold text-purple-400">{(detailModal.data.conversion as number).toFixed(1)}%</p>
+                                            <p className="text-2xl font-bold text-purple-400">{safeToFixed(detailModal.data.conversion as number, 1)}%</p>
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">EPC</p>
-                                            <p className="text-2xl font-bold text-white">${(detailModal.data.epc as number).toFixed(2)}</p>
+                                            <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.epc as number, 2)}</p>
                                         </div>
                                         <div className="bg-gray-800/50 rounded-xl p-4">
                                             <p className="text-xs text-gray-500">Sales Value</p>
@@ -2255,7 +2255,7 @@ export default function DashboardPage() {
                                                 <span className="text-xs text-gray-500 w-6">{i + 1}</span>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">Clicks: {camp.clicks.toLocaleString()} | Conv: {camp.conversion.toFixed(1)}%</p>
+                                                    <p className="text-xs text-gray-500">Clicks: {camp.clicks.toLocaleString()} | Conv: {safeToFixed(camp.conversion, 1)}%</p>
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-sm font-medium text-rose-400">{camp.leads} leads</p>
@@ -2318,7 +2318,7 @@ export default function DashboardPage() {
                                                 <span className="text-xs text-gray-500 w-6">{i + 1}</span>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">CTR: {camp.ctr.toFixed(2)}% | Conv: {camp.conversionRate.toFixed(1)}%</p>
+                                                    <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
                                                 </div>
                                                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${camp.efficiencyRating === "A" ? "bg-emerald-500/20 text-emerald-400" : "bg-cyan-500/20 text-cyan-400"}`}>
                                                     {camp.efficiencyRating}
@@ -2342,7 +2342,7 @@ export default function DashboardPage() {
                                                 <span className="text-xs text-gray-500 w-6">{i + 1}</span>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">CTR: {camp.ctr.toFixed(2)}% | Conv: {camp.conversionRate.toFixed(1)}%</p>
+                                                    <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
                                                 </div>
                                                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${camp.efficiencyRating === "C" ? "bg-amber-500/20 text-amber-400" : "bg-orange-500/20 text-orange-400"}`}>
                                                     {camp.efficiencyRating}
@@ -2372,7 +2372,7 @@ export default function DashboardPage() {
                                                     <span className="text-xs text-gray-500 w-6">{i + 1}</span>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                        <p className="text-xs text-gray-500">CTR: {camp.ctr.toFixed(2)}% | Conv: {camp.conversionRate.toFixed(1)}%</p>
+                                                        <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
                                                     </div>
                                                     <span className="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-400">
                                                         F
