@@ -67,7 +67,23 @@ export function useDashboardData(startDate: string, endDate: string) {
 
                 // 1. Fetch Summary
                 const summaryRes = await fetch(`${apiUrl}/dashboard/summary${queryParams}`, { headers });
-                if (!summaryRes.ok) throw new Error('Failed to fetch summary');
+                
+                // Handle authentication errors gracefully
+                if (summaryRes.status === 401) {
+                    console.warn('Dashboard API: Not authenticated - using demo/fallback data');
+                    // Set empty data so partner APIs still work
+                    setSummary(null);
+                    setLoading(false);
+                    return;
+                }
+                
+                if (!summaryRes.ok) {
+                    console.warn(`Dashboard API returned ${summaryRes.status} - using fallback`);
+                    setSummary(null);
+                    setLoading(false);
+                    return;
+                }
+                
                 const summaryData = await summaryRes.json();
                 setSummary(summaryData);
 

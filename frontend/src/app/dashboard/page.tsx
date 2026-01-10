@@ -599,15 +599,18 @@ const ROASIcon = () => (
 );
 
 export default function DashboardPage() {
-    // Date State - Default to Month to Date
-    const today = new Date().toISOString().split("T")[0];
-    const firstDay = new Date();
-    firstDay.setDate(1);
-    const startOfMonth = firstDay.toISOString().split("T")[0];
+    // Date State - Default to Last 30 Days (like Google Ads)
+    const today = new Date();
+    today.setDate(today.getDate() - 1); // Yesterday as end date
+    const endDate = today.toISOString().split("T")[0];
+    
+    const startDay = new Date(today);
+    startDay.setDate(startDay.getDate() - 29); // 30 days total
+    const startDate = startDay.toISOString().split("T")[0];
 
     const [dateRange, setDateRange] = useState({
-        start: startOfMonth, // Default to start of current month
-        end: today
+        start: startDate, // Default to last 30 days
+        end: endDate
     });
 
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -1278,6 +1281,24 @@ export default function DashboardPage() {
                 topPerformers={topPerformers}
                 bottomPerformers={bottomPerformers}
             />
+
+            {/* Google Ads Authentication Notice */}
+            {!liveSummary && (
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/40 via-gray-900 to-orange-900/40 p-5 border border-amber-500/30">
+                    <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-semibold text-amber-400 mb-1">Google Ads Data Not Available</h3>
+                            <p className="text-sm text-gray-300">
+                                Authentication required to fetch Google Ads metrics. Partner network data (Kelkoo, Admedia, MaxBounty) is displaying correctly below.
+                                To enable Google Ads data, please ensure backend authentication is configured.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* AI Summary */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 via-gray-900 to-cyan-900/40 p-6 border border-purple-500/20">

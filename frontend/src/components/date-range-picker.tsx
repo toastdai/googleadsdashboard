@@ -12,7 +12,7 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ startDate, endDate, onChange }: DateRangePickerProps) {
-    const [preset, setPreset] = useState<DatePreset>("last7");
+    const [preset, setPreset] = useState<DatePreset>("last30");
     const [isOpen, setIsOpen] = useState(false);
 
     const getPresetDates = (preset: DatePreset): { start: string; end: string } => {
@@ -118,23 +118,23 @@ export function DateRangePicker({ startDate, endDate, onChange }: DateRangePicke
                         ))}
 
                         {preset === "custom" && (
-                            <div className="mt-2 pt-2 border-t border-border space-y-2">
+                            <div className="mt-2 pt-2 border-t border-gray-700 space-y-3">
                                 <div>
-                                    <label className="text-xs text-muted-foreground">Start</label>
+                                    <label className="block text-xs text-gray-400 mb-1">Start Date</label>
                                     <input
                                         type="date"
                                         value={startDate}
                                         onChange={(e) => onChange(e.target.value, endDate)}
-                                        className="input text-sm"
+                                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-muted-foreground">End</label>
+                                    <label className="block text-xs text-gray-400 mb-1">End Date</label>
                                     <input
                                         type="date"
                                         value={endDate}
                                         onChange={(e) => onChange(startDate, e.target.value)}
-                                        className="input text-sm"
+                                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     />
                                 </div>
                             </div>
