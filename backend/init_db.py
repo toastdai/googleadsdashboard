@@ -15,7 +15,7 @@ from app.models.user import User
 from app.models.account import GoogleAdsAccount
 from app.models.campaign import Campaign, AdGroup
 from app.models.metrics import DailyMetric, HourlyMetric
-from app.models.partner_metrics import PartnerMetric
+from app.models.partner_metrics import PartnerNetworkMetric
 from app.models.alerts import Alert, SyncLog
 
 
