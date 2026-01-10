@@ -2,11 +2,10 @@ services:
   # Backend Web Service (Docker)
   - type: web
     name: googleads-dashboard-backend
-    env: docker
+    runtime: docker
     rootDir: backend
     plan: free
     region: singapore # Closest to user (India) usually
-    numReplicas: 1
     envVars:
       - key: DATABASE_URL
         fromDatabase:
