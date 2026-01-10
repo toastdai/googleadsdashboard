@@ -34,6 +34,13 @@ import {
 } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
 
+// Safe number formatter - prevents toFixed errors
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 // Keyboard shortcut hook
 function useKeyboardShortcut(key: string, callback: () => void, ctrl = false, shift = false) {
     useEffect(() => {
@@ -368,7 +375,7 @@ const CampaignModal = ({ campaign, onClose }: { campaign: Campaign | null; onClo
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center border border-gray-700">
                         <p className="text-xs text-gray-400 mb-1">Conversions</p>
-                        <p className="text-xl font-bold text-emerald-400">{campaign.conversions.toFixed(0)}</p>
+                        <p className="text-xl font-bold text-emerald-400">{safeToFixed(campaign.conversions, 0)}</p>
                     </div>
                 </div>
 
@@ -376,23 +383,23 @@ const CampaignModal = ({ campaign, onClose }: { campaign: Campaign | null; onClo
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
                     <div className="p-3 bg-gray-800/30 rounded-xl">
                         <p className="text-xs text-gray-500">CTR</p>
-                        <p className="font-semibold text-white">{campaign.ctr.toFixed(2)}%</p>
+                        <p className="font-semibold text-white">{safeToFixed(campaign.ctr, 2)}%</p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-xl">
                         <p className="text-xs text-gray-500">Avg CPC</p>
-                        <p className="font-semibold text-white">Rs.{campaign.avgCpc.toFixed(2)}</p>
+                        <p className="font-semibold text-white">Rs.{safeToFixed(campaign.avgCpc, 2)}</p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-xl">
                         <p className="text-xs text-gray-500">Conv Rate</p>
-                        <p className="font-semibold text-white">{campaign.conversionRate.toFixed(2)}%</p>
+                        <p className="font-semibold text-white">{safeToFixed(campaign.conversionRate, 2)}%</p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-xl">
                         <p className="text-xs text-gray-500">CPA</p>
-                        <p className="font-semibold text-amber-400">Rs.{cpa.toFixed(2)}</p>
+                        <p className="font-semibold text-amber-400">Rs.{safeToFixed(cpa, 2)}</p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-xl">
                         <p className="text-xs text-gray-500">ROAS</p>
-                        <p className={`font-semibold ${roas >= 1 ? "text-emerald-400" : "text-rose-400"}`}>{roas.toFixed(2)}x</p>
+                        <p className={`font-semibold ${roas >= 1 ? "text-emerald-400" : "text-rose-400"}`}>{safeToFixed(roas, 2)}x</p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-xl">
                         <p className="text-xs text-gray-500">Budget</p>
@@ -498,11 +505,11 @@ const ViewBanner = ({
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-purple-400">{(totals.conversions / totals.clicks * 100).toFixed(1)}%</p>
+                        <p className="text-3xl font-bold text-purple-400">{safeToFixed(totals.conversions / totals.clicks * 100, 1)}%</p>
                         <p className="text-xs text-gray-400 mt-1">Conversion Rate</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-cyan-400">{totals.ctr.toFixed(2)}%</p>
+                        <p className="text-3xl font-bold text-cyan-400">{safeToFixed(totals.ctr, 2)}%</p>
                         <p className="text-xs text-gray-400 mt-1">Click-Through Rate</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center">
@@ -538,11 +545,11 @@ const ViewBanner = ({
                         <p className="text-xs text-gray-400 mt-1">Total Spend</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-white">Rs.{totals.avgCpc.toFixed(0)}</p>
+                        <p className="text-3xl font-bold text-white">Rs.{safeToFixed(totals.avgCpc, 0)}</p>
                         <p className="text-xs text-gray-400 mt-1">Avg CPC</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-cyan-400">Rs.{(totals.cost / totals.conversions).toFixed(0)}</p>
+                        <p className="text-3xl font-bold text-cyan-400">Rs.{safeToFixed(totals.cost / totals.conversions, 0)}</p>
                         <p className="text-xs text-gray-400 mt-1">CPA</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 text-center">
@@ -901,10 +908,10 @@ export default function DashboardPage() {
                 c.account || "",
                 c.clicks,
                 c.impressions,
-                c.cost.toFixed(2),
-                c.conversions.toFixed(2),
-                c.ctr.toFixed(2),
-                c.conversionRate.toFixed(2)
+                safeToFixed(c.cost, 2),
+                safeToFixed(c.conversions, 2),
+                safeToFixed(c.ctr, 2),
+                safeToFixed(c.conversionRate, 2)
             ].join(","))
         ].join("\n");
 
@@ -1067,7 +1074,7 @@ export default function DashboardPage() {
             render: (value: number, row: Campaign) => (
                 <div className="text-right">
                     <p className="font-medium">₹{value.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">₹{row.avgCpc.toFixed(0)} CPC</p>
+                    <p className="text-xs text-gray-500">₹{safeToFixed(row.avgCpc, 0)} CPC</p>
                 </div>
             )
         },
@@ -1080,7 +1087,7 @@ export default function DashboardPage() {
                 <div className="text-right">
                     <p className="font-medium">{value.toLocaleString()}</p>
                     <p className={`text-xs ${row.conversionRate >= 50 ? "text-emerald-400" : row.conversionRate >= 30 ? "text-gray-400" : "text-amber-400"}`}>
-                        {row.conversionRate.toFixed(1)}% rate
+                        {safeToFixed(row.conversionRate, 1)}% rate
                     </p>
                 </div>
             )
@@ -1092,7 +1099,7 @@ export default function DashboardPage() {
             sortable: true,
             render: (value: number) => (
                 <span className={`font-medium ${value >= 5 ? "text-emerald-400" : value >= 2 ? "text-white" : "text-amber-400"}`}>
-                    {value.toFixed(2)}%
+                    {safeToFixed(value, 2)}%
                 </span>
             )
         },
@@ -1175,15 +1182,15 @@ export default function DashboardPage() {
                 if (row.isKelkoo && row.kelkooRevenue) {
                     // kelkooRevenue is in EUR, convert to USD
                     const usdValue = row.kelkooRevenue * eurToUsd;
-                    return <span className="text-cyan-400 font-medium">${usdValue.toFixed(2)}</span>;
+                    return <span className="text-cyan-400 font-medium">${safeToFixed(usdValue, 2)}</span>;
                 }
                 if (row.isAdmedia && row.admediaEarnings) {
                     // admediaEarnings is already in USD
-                    return <span className="text-amber-400 font-medium">${row.admediaEarnings.toFixed(2)}</span>;
+                    return <span className="text-amber-400 font-medium">${safeToFixed(row.admediaEarnings, 2)}</span>;
                 }
                 if (row.isMaxBounty && row.maxBountyEarnings) {
                     // maxBountyEarnings is already in USD
-                    return <span className="text-rose-400 font-medium">${row.maxBountyEarnings.toFixed(2)}</span>;
+                    return <span className="text-rose-400 font-medium">${safeToFixed(row.maxBountyEarnings, 2)}</span>;
                 }
                 return <span className="text-gray-600">-</span>;
             },
@@ -1666,7 +1673,7 @@ export default function DashboardPage() {
                 <EnhancedKPICard
                     title="Total Cost"
                     value={liveSummary ? formatCurrency(liveSummary.cost.value) : formatCurrency(totals.cost)}
-                    subtitle={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)} avg CPC` : `Rs.${totals.avgCpc.toFixed(0)} avg CPC`}
+                    subtitle={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)} avg CPC` : `Rs.${safeToFixed(totals.avgCpc, 0)} avg CPC`}
                     trend={liveSummary?.cost.change_percent ? `${liveSummary.cost.change_percent.toFixed(1)}%` : "-2.4%"}
                     trendUp={liveSummary?.cost.change_direction === "down"}
                     icon={<CostIcon />}
@@ -1687,7 +1694,7 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="CTR"
-                    value={liveSummary ? `${liveSummary.ctr.value.toFixed(2)}%` : `${totals.ctr.toFixed(2)}%`}
+                    value={liveSummary ? `${liveSummary.ctr.safeToFixed(value, 2)}%` : `${safeToFixed(totals.ctr, 2)}%`}
                     subtitle="Above avg"
                     trend={liveSummary?.ctr.change_percent ? `${liveSummary.ctr.change_percent.toFixed(1)}%` : "+0.5%"}
                     trendUp={liveSummary?.ctr.change_direction === "up"}
@@ -1698,7 +1705,7 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="Avg CPC"
-                    value={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)}` : `Rs.${totals.avgCpc.toFixed(0)}`}
+                    value={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)}` : `Rs.${safeToFixed(totals.avgCpc, 0)}`}
                     subtitle="Per click"
                     trend={liveSummary?.cpc.change_percent ? `${liveSummary.cpc.change_percent.toFixed(1)}%` : "-1.2%"}
                     trendUp={liveSummary?.cpc.change_direction === "down"}
@@ -1708,7 +1715,7 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="CPA"
-                    value={liveSummary ? `Rs.${liveSummary.cpa.value.toFixed(0)}` : `Rs.${(totals.cost / totals.conversions).toFixed(0)}`}
+                    value={liveSummary ? `Rs.${liveSummary.cpa.value.toFixed(0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
                     subtitle="Per conversion"
                     trend={liveSummary?.cpa.change_percent ? `${liveSummary.cpa.change_percent.toFixed(1)}%` : "-3.5%"}
                     trendUp={liveSummary?.cpa.change_direction === "down"}
@@ -1718,7 +1725,7 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="ROAS"
-                    value={liveSummary ? `${liveSummary.roas.value.toFixed(2)}x` : `${avgROAS.toFixed(2)}x`}
+                    value={liveSummary ? `${liveSummary.roas.safeToFixed(value, 2)}x` : `${avgROAS.toFixed(2)}x`}
                     subtitle="Return on ad spend"
                     trend={liveSummary?.roas.change_percent ? `${liveSummary.roas.change_percent.toFixed(1)}%` : "+5.2%"}
                     trendUp={liveSummary?.roas.change_direction === "up"}
@@ -1802,7 +1809,7 @@ export default function DashboardPage() {
                                     <p className="text-xs text-gray-500">{camp.conversions.toFixed(0)} conv @ Rs.{camp.cpa.toFixed(0)} CPA</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-bold text-emerald-400">{camp.roas.toFixed(2)}x</p>
+                                    <p className="font-bold text-emerald-400">{camp.safeToFixed(roas, 2)}x</p>
                                     <p className="text-xs text-gray-500">ROAS</p>
                                 </div>
                             </button>
@@ -1907,7 +1914,7 @@ export default function DashboardPage() {
                                     <span className="text-[10px] font-bold text-white">KL</span>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.kelkoo.roas.toFixed(2)}x</p>
+                                    <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.kelkoo.safeToFixed(roas, 2)}x</p>
                                     <p className="text-[10px] text-gray-400">₹{(networkComparison.kelkoo.revenueInr / 1000).toFixed(0)}k rev</p>
                                 </div>
                             </div>
@@ -1918,7 +1925,7 @@ export default function DashboardPage() {
                                     <span className="text-[10px] font-bold text-white">AM</span>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.admedia.roas.toFixed(2)}x</p>
+                                    <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.admedia.safeToFixed(roas, 2)}x</p>
                                     <p className="text-[10px] text-gray-400">₹{(networkComparison.admedia.revenueInr / 1000).toFixed(0)}k rev</p>
                                 </div>
                             </div>
@@ -1929,7 +1936,7 @@ export default function DashboardPage() {
                                     <span className="text-[10px] font-bold text-white">MB</span>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.maxbounty.roas.toFixed(2)}x</p>
+                                    <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{networkComparison.maxbounty.safeToFixed(roas, 2)}x</p>
                                     <p className="text-[10px] text-gray-400">₹{(networkComparison.maxbounty.revenueInr / 1000).toFixed(0)}k rev</p>
                                 </div>
                             </div>
@@ -1971,9 +1978,9 @@ export default function DashboardPage() {
                         <div className="p-6">
                             <div className="text-center mb-6">
                                 <p className="text-5xl font-display font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                                    {activeKPI === "ctr" && `${totals.ctr.toFixed(2)}%`}
-                                    {activeKPI === "cpc" && `Rs.${totals.avgCpc.toFixed(0)}`}
-                                    {activeKPI === "cpa" && `Rs.${(totals.cost / totals.conversions).toFixed(0)}`}
+                                    {activeKPI === "ctr" && `${safeToFixed(totals.ctr, 2)}%`}
+                                    {activeKPI === "cpc" && `Rs.${safeToFixed(totals.avgCpc, 0)}`}
+                                    {activeKPI === "cpa" && `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
                                     {activeKPI === "roas" && `${avgROAS.toFixed(2)}x`}
                                 </p>
                             </div>
@@ -1982,21 +1989,21 @@ export default function DashboardPage() {
                                 <ul className="space-y-2 text-sm text-gray-300">
                                     {activeKPI === "ctr" && (
                                         <>
-                                            <li>- Average CTR of {totals.ctr.toFixed(2)}% is above industry average</li>
+                                            <li>- Average CTR of {safeToFixed(totals.ctr, 2)}% is above industry average</li>
                                             <li>- Best performer: {topPerformers[0]?.name} at {topPerformers[0]?.ctr.toFixed(2)}%</li>
                                             <li>- {liveEnrichedCampaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
                                         </>
                                     )}
                                     {activeKPI === "cpc" && (
                                         <>
-                                            <li>- Average CPC of Rs.{totals.avgCpc.toFixed(0)} across {liveEnrichedCampaigns.length} campaigns</li>
+                                            <li>- Average CPC of Rs.{safeToFixed(totals.avgCpc, 0)} across {liveEnrichedCampaigns.length} campaigns</li>
                                             <li>- Total clicks: {totals.clicks.toLocaleString()}</li>
                                             <li>- Consider bid adjustments for high CPC campaigns</li>
                                         </>
                                     )}
                                     {activeKPI === "cpa" && (
                                         <>
-                                            <li>- Average CPA: Rs.{(totals.cost / totals.conversions).toFixed(0)} per conversion</li>
+                                            <li>- Average CPA: Rs.{safeToFixed(totals.cost / totals.conversions, 0)} per conversion</li>
                                             <li>- Total conversions: {totals.conversions.toLocaleString()}</li>
                                             <li>- {liveEnrichedCampaigns.filter(c => c.conversionRate > 50).length} high-converting campaigns</li>
                                         </>
