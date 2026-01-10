@@ -759,6 +759,7 @@ export default function DashboardPage() {
             // Calculate derived metrics from raw data
             const avgCpc = c.clicks > 0 ? c.cost / c.clicks : 0;
             const conversionRate = c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0;
+            const cpa = c.conversions > 0 ? c.cost / c.conversions : 0;
             
             // Create enriched campaign object
             const enrichedCampaign = {
@@ -766,6 +767,7 @@ export default function DashboardPage() {
                 id: c.id || c.name, // Use name as fallback ID
                 avgCpc,
                 conversionRate,
+                cpa,
                 // Map conversion_value to revenue if missing
                 revenue: c.conversion_value || 0,
                 status: "Enabled", // Backend returns active campaigns
@@ -844,6 +846,14 @@ export default function DashboardPage() {
             });
         }
 
+        // Final pass: Update roas to use actualROAS for partner campaigns (calculated with partner revenue)
+        result = result.map(campaign => {
+            if (campaign.actualROAS !== undefined && campaign.actualROAS > 0) {
+                return { ...campaign, roas: campaign.actualROAS };
+            }
+            return campaign;
+        });
+
         return result;
     }, [liveTopCampaigns, kelkooApiData, admediaApiData, maxBountyApiData]);
 
@@ -918,15 +928,15 @@ export default function DashboardPage() {
     // Compute top and bottom performers from live data
     const topPerformers = useMemo(() => {
         return liveEnrichedCampaigns
-            .filter(c => c.status === "Enabled" && c.conversions > 0)
-            .sort((a, b) => (b.conversions / (b.cost || 1)) - (a.conversions / (a.cost || 1)))
+            .filter(c => c.status === "Enabled" && (c.roas > 0 || c.conversions > 0))
+            .sort((a, b) => (b.roas || 0) - (a.roas || 0))
             .slice(0, 5);
     }, [liveEnrichedCampaigns]);
 
     const bottomPerformers = useMemo(() => {
         return liveEnrichedCampaigns
             .filter(c => c.status === "Enabled" && c.cost > 1000)
-            .sort((a, b) => (a.conversions / (a.cost || 1)) - (b.conversions / (b.cost || 1)))
+            .sort((a, b) => (a.roas || 0) - (b.roas || 0))
             .slice(0, 5);
     }, [liveEnrichedCampaigns]);
 
