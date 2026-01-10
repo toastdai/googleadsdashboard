@@ -47,7 +47,7 @@ async def trigger_manual_sync(
         google_ads_service = GoogleAdsService()
         sync_service = SyncService(db, google_ads_service)
         
-        # Get user's Google Ads account (manager account with refresh token)
+        # Get user's Google Ads account (try manager first, then any account)
         print(f"DEBUG Sync: Looking for manager account for user {current_user.email} (id={current_user.id})")
         result = await db.execute(
             select(GoogleAdsAccount)
@@ -58,6 +58,17 @@ async def trigger_manual_sync(
         manager_account = result.scalar_one_or_none()
         
         if not manager_account:
+            # No manager account found, try to get any account
+            print(f"DEBUG Sync: No manager account found, looking for any account")
+            result = await db.execute(
+                select(GoogleAdsAccount)
+                .where(GoogleAdsAccount.user_id == current_user.id)
+                .where(GoogleAdsAccount.is_active == True)
+                .limit(1)
+            )
+            manager_account = result.scalar_one_or_none()
+        
+        if not manager_account:
             # Check if user has any accounts at all
             all_accounts_result = await db.execute(
                 select(GoogleAdsAccount)
@@ -66,19 +77,33 @@ async def trigger_manual_sync(
             all_accounts = all_accounts_result.scalars().all()
             print(f"DEBUG Sync: User has {len(all_accounts)} total accounts")
             for acc in all_accounts:
-                print(f"DEBUG Sync: Account {acc.customer_id} - is_manager={acc.is_manager}")
+                print(f"DEBUG Sync: Account {acc.customer_id} - is_manager={acc.is_manager}, is_active={acc.is_active}")
             
             raise HTTPException(
                 status_code=400,
-                detail="No Google Ads manager account found. Please sign out and sign in again to refresh your account connection."
+                detail=f"No Google Ads account found. Please sign out and sign in again. (Found {len(all_accounts)} accounts in database)"
             )
         
-        # Use the manager account's customer ID and refresh token
-        manager_id = manager_account.customer_id
+        # Use the account's customer ID and refresh token
+        account_customer_id = manager_account.customer_id
         refresh_token = manager_account.refresh_token
         
+        # If account is not a manager, use login_customer_id from settings as manager
+        if manager_account.is_manager:
+            manager_id = account_customer_id
+            print(f"DEBUG Sync: Using manager account {manager_id}")
+        else:
+            # This is a child account, use settings login_customer_id as manager
+            manager_id = settings.google_ads_login_customer_id
+            if not manager_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Your account is not a manager account. Please configure GOOGLE_ADS_LOGIN_CUSTOMER_ID in backend settings."
+                )
+            print(f"DEBUG Sync: Using child account {account_customer_id} with manager {manager_id}")
+        
         # Debug logging
-        print(f"DEBUG: Using manager account {manager_id} for user {current_user.email}")
+        print(f"DEBUG: Manager ID = {manager_id}, Account ID = {account_customer_id}")
         print(f"DEBUG: Refresh token exists = {bool(refresh_token)}")
         
         # Ensure manager_id is properly formatted (10 digits, no hyphens)
