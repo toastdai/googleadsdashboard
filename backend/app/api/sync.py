@@ -57,7 +57,7 @@ async def trigger_manual_sync(
         
         # Run sync
         await sync_service.sync_all_accounts(
-            manager_id=manager_id,
+            manager_customer_id=manager_id,
             refresh_token=refresh_token,
             start_date=start_date,
             end_date=end_date,
