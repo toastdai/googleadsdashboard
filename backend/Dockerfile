@@ -43,5 +43,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application (initialize DB first, then start server)
+CMD python init_db.py && uvicorn app.main:app --host 0.0.0.0 --port 8000
