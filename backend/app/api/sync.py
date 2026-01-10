@@ -58,6 +58,10 @@ async def trigger_manual_sync(
         # Ensure manager_id is properly formatted (10 digits, no hyphens)
         manager_id = str(manager_id).replace("-", "")
         
+        # Debug logging
+        print(f"DEBUG: manager_id = {manager_id}, type = {type(manager_id)}, len = {len(manager_id)}")
+        print(f"DEBUG: refresh_token exists = {bool(refresh_token)}")
+        
         # Run sync
         await sync_service.sync_all_accounts(
             manager_customer_id=manager_id,
