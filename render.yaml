@@ -30,7 +30,7 @@ services:
       - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
         sync: false
       - key: FRONTEND_URL
-        placeholder: "https://your-vercel-app.vercel.app"
+        value: "https://frontend-mu-lake.vercel.app"
 
 databases:
   # Managed PostgreSQL
