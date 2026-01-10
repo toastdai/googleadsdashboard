@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { DataTable } from "@/components/data-table";
 import { MetricsLineChart, ChartSkeleton } from "@/components/charts";
-import { campaigns as realCampaigns, Campaign } from "@/lib/campaign-data";
+import { Campaign, formatCurrency, formatNumber } from "@/lib/campaign-data";
 import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooData";
 import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
 import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
+import { useDashboardData, BreakdownItem } from "@/hooks/useDashboardData";
+import { calculateHealthScore, calculateEfficiencyRating, calculateRiskLevel } from "@/lib/dashboard-utils";
 
 // Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
 const safeToFixed = (value: any, decimals: number = 2): string => {
@@ -25,8 +27,8 @@ const detectNetwork = (name: string) => {
     };
 };
 
-// Generate campaign performance data based on real campaigns
-function generateCampaignTrendData(campaignData: Campaign[], days: number = 7) {
+// Generate campaign performance data based on campaigns
+function generateCampaignTrendData(campaignData: DisplayCampaign[], days: number = 7) {
     const data: { date: string; [key: string]: string | number }[] = [];
     const today = new Date();
     const topCampaigns = [...campaignData]
@@ -52,44 +54,58 @@ function generateCampaignTrendData(campaignData: Campaign[], days: number = 7) {
 }
 
 // Extended campaign type for display
-interface DisplayCampaign extends Campaign {
+interface DisplayCampaign extends Partial<Campaign> {
+    id: string;
+    name: string;
+    clicks: number;
+    impressions: number;
+    cost: number;
+    conversions: number;
+    ctr: number;
     roas: number;
     spend_rate: number;
     type: string;
     network: string;
     partnerRevenue?: number;
+    status: string;
+    healthScore?: number;
+    efficiencyRating?: string;
+    riskLevel?: string;
+    conversionRate?: number;
+    avgCpc?: number;
+    cpa?: number;
 }
 
 export default function CampaignsPage() {
-    const [isLoading, setIsLoading] = useState(true);
     const [selectedCampaign, setSelectedCampaign] = useState<DisplayCampaign | null>(null);
     const [statusFilter, setStatusFilter] = useState<"all" | "Enabled" | "Paused">("all");
     const [typeFilter, setTypeFilter] = useState<string>("all");
     const [networkFilter, setNetworkFilter] = useState<string>("all");
 
-    // Date range - default to current month
-    const today = new Date().toISOString().split('T')[0];
-    const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    // Date range - default to last 30 days
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+    const endDate = today.toISOString().split('T')[0];
+
+    // Fetch backend campaign data
+    const { topCampaigns: backendCampaigns, loading: backendLoading } = useDashboardData(startDate, endDate);
 
     // Fetch partner data
-    const { data: kelkooData, loading: kelkooLoading, refetch: refetchKelkoo } = useKelkooData(firstDayOfMonth, today);
-    const { data: admediaData, loading: admediaLoading, refetch: refetchAdmedia } = useAdmediaData(firstDayOfMonth, today);
-    const { data: maxBountyData, loading: maxBountyLoading, refetch: refetchMaxBounty } = useMaxBountyData(firstDayOfMonth, today);
+    const { data: kelkooData, loading: kelkooLoading, refetch: refetchKelkoo } = useKelkooData(startDate, endDate);
+    const { data: admediaData, loading: admediaLoading, refetch: refetchAdmedia } = useAdmediaData(startDate, endDate);
+    const { data: maxBountyData, loading: maxBountyLoading, refetch: refetchMaxBounty } = useMaxBountyData(startDate, endDate);
 
-    useEffect(() => {
-        // Simulate initial load
-        const timer = setTimeout(() => setIsLoading(false), 500);
-        return () => clearTimeout(timer);
-    }, []);
+    const isLoading = backendLoading || kelkooLoading || admediaLoading || maxBountyLoading;
 
     // Enrich campaigns with partner data and computed fields
     const enrichedCampaigns: DisplayCampaign[] = useMemo(() => {
         // Calculate total clicks for each network
-        const totalKLClicks = realCampaigns.filter(c => detectNetwork(c.name).isKelkoo).reduce((sum, c) => sum + c.clicks, 0);
-        const totalAMClicks = realCampaigns.filter(c => detectNetwork(c.name).isAdmedia).reduce((sum, c) => sum + c.clicks, 0);
-        const totalMBClicks = realCampaigns.filter(c => detectNetwork(c.name).isMaxBounty).reduce((sum, c) => sum + c.clicks, 0);
+        const totalKLClicks = backendCampaigns.filter(c => detectNetwork(c.name).isKelkoo).reduce((sum, c) => sum + c.clicks, 0);
+        const totalAMClicks = backendCampaigns.filter(c => detectNetwork(c.name).isAdmedia).reduce((sum, c) => sum + c.clicks, 0);
+        const totalMBClicks = backendCampaigns.filter(c => detectNetwork(c.name).isMaxBounty).reduce((sum, c) => sum + c.clicks, 0);
 
-        return realCampaigns.map(camp => {
+        return backendCampaigns.map(camp => {
             const network = detectNetwork(camp.name);
             let partnerRevenue = 0;
             let partnerLeads = 0;
@@ -112,11 +128,23 @@ export default function CampaignsPage() {
                 networkName = "MaxBounty";
             }
 
-            // Calculate ROAS
-            const roas = camp.cost > 0 ? partnerRevenue / camp.cost : 0;
+            // Calculate ROAS - use partner revenue if available, else conversion_value
+            const conversionValue = camp.conversion_value || 0;
+            const effectiveRevenue = partnerRevenue > 0 ? partnerRevenue : conversionValue;
+            const roas = camp.cost > 0 ? effectiveRevenue / camp.cost : 0;
 
-            // Calculate spend rate (budget utilization)
-            const spend_rate = camp.budget > 0 ? Math.min(100, (camp.cost / camp.budget) * 100) : 0;
+            // Calculate spend rate (budget utilization) - use 0 if no budget info
+            const spend_rate = 0; // Backend doesn't provide budget info
+
+            // Calculate derived metrics
+            const avgCpc = camp.clicks > 0 ? camp.cost / camp.clicks : 0;
+            const conversionRate = camp.clicks > 0 ? (camp.conversions / camp.clicks) * 100 : 0;
+            const cpa = camp.conversions > 0 ? camp.cost / camp.conversions : 0;
+
+            // Calculate AI metrics
+            const healthScore = calculateHealthScore(camp as BreakdownItem);
+            const efficiencyRating = calculateEfficiencyRating(camp as BreakdownItem);
+            const riskLevel = calculateRiskLevel(camp as BreakdownItem);
 
             // Determine campaign type from name
             let type = "SEARCH";
@@ -127,21 +155,34 @@ export default function CampaignsPage() {
             else if (nameLower.includes("pmax") || nameLower.includes("performance max")) type = "PERFORMANCE_MAX";
 
             return {
-                ...camp,
+                id: camp.id?.toString() || camp.name,
+                name: camp.name,
+                clicks: camp.clicks,
+                impressions: camp.impressions,
+                cost: camp.cost,
+                conversions: camp.conversions,
+                ctr: camp.ctr,
+                avgCpc,
+                conversionRate,
+                cpa,
                 roas,
                 spend_rate,
                 type,
                 network: networkName,
                 partnerRevenue,
+                status: "Enabled",
+                healthScore,
+                efficiencyRating,
+                riskLevel,
                 isKelkoo: network.isKelkoo,
                 isAdmedia: network.isAdmedia,
                 isMaxBounty: network.isMaxBounty,
                 kelkooLeads: network.isKelkoo ? partnerLeads : undefined,
                 admediaLeads: network.isAdmedia ? partnerLeads : undefined,
                 maxBountyLeads: network.isMaxBounty ? partnerLeads : undefined,
-            };
+            } as DisplayCampaign;
         });
-    }, [kelkooData, admediaData, maxBountyData]);
+    }, [backendCampaigns, kelkooData, admediaData, maxBountyData]);
 
     const filteredCampaigns = enrichedCampaigns.filter((c) => {
         if (statusFilter !== "all" && c.status !== statusFilter) return false;
@@ -182,11 +223,10 @@ export default function CampaignsPage() {
     const clearCampaignSelection = () => setSelectedCampaignIds([]);
 
     const handleRefresh = () => {
-        setIsLoading(true);
+        // Refetch partner data - backend data auto-refetches when date range changes
         refetchKelkoo();
         refetchAdmedia();
         refetchMaxBounty();
-        setTimeout(() => setIsLoading(false), 1000);
     };
 
     const columns = [
@@ -260,8 +300,9 @@ export default function CampaignsPage() {
     const avgRoas = filteredCampaigns.length > 0 
         ? filteredCampaigns.reduce((sum, c) => sum + c.roas, 0) / filteredCampaigns.filter(c => c.roas > 0).length 
         : 0;
-    const avgOptScore = filteredCampaigns.length > 0
-        ? filteredCampaigns.reduce((sum, c) => sum + c.optimizationScore, 0) / filteredCampaigns.length
+    // Use health score average instead of optimization score (not available from backend)
+    const avgHealthScore = filteredCampaigns.length > 0
+        ? filteredCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / filteredCampaigns.length
         : 0;
 
     return (
@@ -271,7 +312,7 @@ export default function CampaignsPage() {
                 <div>
                     <h1 className="text-2xl font-display font-bold">Campaigns</h1>
                     <p className="text-muted-foreground mt-1">
-                        Real data from EFF24 Google Ads Account
+                        {backendCampaigns.length > 0 ? `${backendCampaigns.length} campaigns from Google Ads` : "Loading campaigns..."}
                         {(kelkooLoading || admediaLoading || maxBountyLoading) && 
                             <span className="ml-2 text-cyan-400">(Loading partner data...)</span>
                         }
@@ -316,8 +357,8 @@ export default function CampaignsPage() {
                     <p className="text-xs text-muted-foreground">Avg ROAS</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-purple-500">{safeToFixed(avgOptScore, 0)}%</p>
-                    <p className="text-xs text-muted-foreground">Avg Opt. Score</p>
+                    <p className="text-2xl font-bold text-purple-500">{safeToFixed(avgHealthScore, 0)}</p>
+                    <p className="text-xs text-muted-foreground">Avg Health Score</p>
                 </div>
             </div>
 
@@ -542,12 +583,12 @@ export default function CampaignsPage() {
                                 <span>{safeToFixed(selectedCampaign.conversionRate, 2)}%</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-border">
-                                <span className="text-muted-foreground">Budget</span>
-                                <span>₹{selectedCampaign.budget.toLocaleString()} ({selectedCampaign.budgetType})</span>
+                                <span className="text-muted-foreground">CPA</span>
+                                <span>₹{safeToFixed(selectedCampaign.cpa, 2)}</span>
                             </div>
                             <div className="flex justify-between py-2">
-                                <span className="text-muted-foreground">Optimization Score</span>
-                                <span className="text-purple-400">{safeToFixed(selectedCampaign.optimizationScore, 1)}%</span>
+                                <span className="text-muted-foreground">Health Score</span>
+                                <span className="text-purple-400">{safeToFixed(selectedCampaign.healthScore, 0)} ({selectedCampaign.efficiencyRating || "-"})</span>
                             </div>
                         </div>
                     </div>
