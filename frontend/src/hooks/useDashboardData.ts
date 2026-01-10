@@ -55,7 +55,8 @@ export function useDashboardData(startDate: string, endDate: string) {
             setError(null);
 
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+                // Default to deployed backend when env var missing (production safety)
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://googleads-dashboard-backend.onrender.com/api';
                 const token = localStorage.getItem('token'); // Assuming auth token is stored here
 
                 const headers = {
