@@ -33,6 +33,7 @@ export function KPICard({
 }: KPICardProps) {
     const formatValue = (val: number | string): string => {
         if (typeof val === "string") return val;
+        if (val === null || val === undefined || isNaN(val)) return "0";
 
         switch (format) {
             case "currency":
@@ -105,7 +106,7 @@ export function KPICard({
                             {formatValue(value)}
                         </p>
 
-                        {metric.change_percent !== undefined && (
+                        {metric.change_percent !== undefined && metric.change_percent !== null && !isNaN(metric.change_percent) && (
                             <div className="flex items-center gap-2 mt-2">
                                 <span className={`${getBadgeClass()} inline-flex items-center gap-1`}>
                                     {metric.change_direction === "up" ? <ArrowUpIcon /> : <ArrowDownIcon />}
