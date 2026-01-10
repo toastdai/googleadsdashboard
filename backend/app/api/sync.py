@@ -50,9 +50,15 @@ async def trigger_manual_sync(
         refresh_token = settings.google_ads_refresh_token
         
         if not manager_id or not refresh_token:
+            error_details = []
+            if not manager_id:
+                error_details.append("GOOGLE_ADS_LOGIN_CUSTOMER_ID is not set")
+            if not refresh_token:
+                error_details.append("GOOGLE_ADS_REFRESH_TOKEN is not set")
+            
             raise HTTPException(
                 status_code=400,
-                detail="Google Ads credentials not configured on backend"
+                detail=f"Google Ads credentials not configured on backend: {', '.join(error_details)}"
             )
         
         # Ensure manager_id is properly formatted (10 digits, no hyphens)
@@ -60,7 +66,7 @@ async def trigger_manual_sync(
         
         # Debug logging
         print(f"DEBUG: manager_id = {manager_id}, type = {type(manager_id)}, len = {len(manager_id)}")
-        print(f"DEBUG: refresh_token exists = {bool(refresh_token)}")
+        print(f"DEBUG: refresh_token exists = {bool(refresh_token)}, first 20 chars = {refresh_token[:20] if refresh_token else 'None'}")
         
         # Run sync
         await sync_service.sync_all_accounts(
