@@ -1694,9 +1694,9 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="CTR"
-                    value={liveSummary ? `${liveSummary.ctr.safeToFixed(value, 2)}%` : `${safeToFixed(totals.ctr, 2)}%`}
+                    value={liveSummary ? `${safeToFixed(liveSummary.ctr.value, 2)}%` : `${safeToFixed(totals.ctr, 2)}%`}
                     subtitle="Above avg"
-                    trend={liveSummary?.ctr.change_percent ? `${liveSummary.ctr.change_percent.toFixed(1)}%` : "+0.5%"}
+                    trend={liveSummary?.ctr.change_percent ? `${safeToFixed(liveSummary.ctr.change_percent, 1)}%` : "+0.5%"}
                     trendUp={liveSummary?.ctr.change_direction === "up"}
                     icon={<CTRIcon />}
                     color="cyan"
@@ -1705,9 +1705,9 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="Avg CPC"
-                    value={liveSummary ? `Rs.${liveSummary.cpc.value.toFixed(0)}` : `Rs.${safeToFixed(totals.avgCpc, 0)}`}
+                    value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)}` : `Rs.${safeToFixed(totals.avgCpc, 0)}`}
                     subtitle="Per click"
-                    trend={liveSummary?.cpc.change_percent ? `${liveSummary.cpc.change_percent.toFixed(1)}%` : "-1.2%"}
+                    trend={liveSummary?.cpc.change_percent ? `${safeToFixed(liveSummary.cpc.change_percent, 1)}%` : "-1.2%"}
                     trendUp={liveSummary?.cpc.change_direction === "down"}
                     icon={<CPCIcon />}
                     color="warning"
