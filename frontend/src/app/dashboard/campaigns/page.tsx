@@ -8,6 +8,13 @@ import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooDat
 import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
 import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 // Helper to detect network from campaign name
 const detectNetwork = (name: string) => {
     const nameLower = name.toLowerCase();
@@ -225,7 +232,7 @@ export default function CampaignsPage() {
             sortable: true,
             render: (value: number, row: DisplayCampaign) => (
                 <span className={`font-medium ${value >= 1 ? "text-success-500" : value > 0 ? "text-warning-500" : "text-muted-foreground"}`}>
-                    {value > 0 ? `${value.toFixed(2)}x` : "-"}
+                    {value > 0 ? `${safeToFixed(value, 2)}x` : "-"}
                 </span>
             ),
         },
@@ -241,7 +248,7 @@ export default function CampaignsPage() {
                             style={{ width: `${value}%` }}
                         />
                     </div>
-                    <span className="text-xs tabular-nums">{value.toFixed(0)}%</span>
+                    <span className="text-xs tabular-nums">{safeToFixed(value, 0)}%</span>
                 </div>
             ),
         },
@@ -297,7 +304,7 @@ export default function CampaignsPage() {
                     <p className="text-xs text-muted-foreground">Active</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-warning-500">₹{(totalSpend / 100000).toFixed(1)}L</p>
+                    <p className="text-2xl font-bold text-warning-500">₹{safeToFixed(totalSpend / 100000, 1)}L</p>
                     <p className="text-xs text-muted-foreground">Total Spend</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
@@ -305,11 +312,11 @@ export default function CampaignsPage() {
                     <p className="text-xs text-muted-foreground">Conversions</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className={`text-2xl font-bold ${avgRoas >= 1 ? "text-cyan-500" : "text-red-400"}`}>{avgRoas > 0 ? avgRoas.toFixed(2) : "-"}x</p>
+                    <p className={`text-2xl font-bold ${avgRoas >= 1 ? "text-cyan-500" : "text-red-400"}`}>{avgRoas > 0 ? safeToFixed(avgRoas, 2) : "-"}x</p>
                     <p className="text-xs text-muted-foreground">Avg ROAS</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-purple-500">{avgOptScore.toFixed(0)}%</p>
+                    <p className="text-2xl font-bold text-purple-500">{safeToFixed(avgOptScore, 0)}%</p>
                     <p className="text-xs text-muted-foreground">Avg Opt. Score</p>
                 </div>
             </div>
@@ -488,12 +495,12 @@ export default function CampaignsPage() {
                             </div>
                             <div className="p-4 bg-muted rounded-xl">
                                 <p className="text-xs text-muted-foreground">Cost</p>
-                                <p className="text-xl font-bold">₹{(selectedCampaign.cost / 1000).toFixed(1)}K</p>
+                                <p className="text-xl font-bold">₹{safeToFixed(selectedCampaign.cost / 1000, 1)}K</p>
                             </div>
                             <div className="p-4 bg-muted rounded-xl">
                                 <p className="text-xs text-muted-foreground">ROAS</p>
                                 <p className={`text-xl font-bold ${selectedCampaign.roas >= 1 ? "text-success-500" : "text-warning-500"}`}>
-                                    {selectedCampaign.roas > 0 ? `${selectedCampaign.roas.toFixed(2)}x` : "-"}
+                                    {selectedCampaign.roas > 0 ? `${safeToFixed(selectedCampaign.roas, 2)}x` : "-"}
                                 </p>
                             </div>
                         </div>
@@ -520,11 +527,11 @@ export default function CampaignsPage() {
                             </div>
                             <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">CTR</span>
-                                <span>{selectedCampaign.ctr.toFixed(2)}%</span>
+                                <span>{safeToFixed(selectedCampaign.ctr, 2)}%</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">Avg CPC</span>
-                                <span>₹{selectedCampaign.avgCpc.toFixed(2)}</span>
+                                <span>₹{safeToFixed(selectedCampaign.avgCpc, 2)}</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">Conversions</span>
@@ -532,7 +539,7 @@ export default function CampaignsPage() {
                             </div>
                             <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">Conv. Rate</span>
-                                <span>{selectedCampaign.conversionRate.toFixed(2)}%</span>
+                                <span>{safeToFixed(selectedCampaign.conversionRate, 2)}%</span>
                             </div>
                             <div className="flex justify-between py-2 border-b border-border">
                                 <span className="text-muted-foreground">Budget</span>
@@ -540,7 +547,7 @@ export default function CampaignsPage() {
                             </div>
                             <div className="flex justify-between py-2">
                                 <span className="text-muted-foreground">Optimization Score</span>
-                                <span className="text-purple-400">{selectedCampaign.optimizationScore.toFixed(1)}%</span>
+                                <span className="text-purple-400">{safeToFixed(selectedCampaign.optimizationScore, 1)}%</span>
                             </div>
                         </div>
                     </div>

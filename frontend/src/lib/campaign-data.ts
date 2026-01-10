@@ -615,23 +615,30 @@ export const dailyTrend = Array.from({ length: 31 }, (_, i) => {
     };
 });
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 // Format helpers
 export const formatCurrency = (value: number): string => {
     if (value >= 100000) {
-        return `Rs.${(value / 100000).toFixed(2)}L`;
+        return `Rs.${safeToFixed(value / 100000, 2)}L`;
     } else if (value >= 1000) {
-        return `Rs.${(value / 1000).toFixed(1)}K`;
+        return `Rs.${safeToFixed(value / 1000, 1)}K`;
     }
-    return `Rs.${value.toFixed(2)}`;
+    return `Rs.${safeToFixed(value, 2)}`;
 };
 
 export const formatNumber = (value: number): string => {
     if (value >= 1000000) {
-        return `${(value / 1000000).toFixed(2)}M`;
+        return `${safeToFixed(value / 1000000, 2)}M`;
     } else if (value >= 1000) {
-        return `${(value / 1000).toFixed(1)}K`;
+        return `${safeToFixed(value / 1000, 1)}K`;
     }
-    return value.toFixed(0);
+    return safeToFixed(value, 0);
 };
 
 // Kelkoo data integration for KL campaigns

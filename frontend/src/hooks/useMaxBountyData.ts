@@ -7,6 +7,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 export interface MaxBountyCampaign {
     name: string;
     campaign_id: number;
@@ -105,7 +112,7 @@ export function formatMaxBountyCurrency(amount: number, currency: "USD" | "INR" 
 
 // Helper to format percentage
 export function formatMaxBountyPercentage(value: number): string {
-    return `${value.toFixed(2)}%`;
+    return `${safeToFixed(value, 2)}%`;
 }
 
 const USD_TO_INR = 85;

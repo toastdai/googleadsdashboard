@@ -7,6 +7,13 @@
  * API Key: 2fb42a467452b41e946c29860736afb6
  */
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 // Admedia API configuration (values must be provided via environment)
 const ADMEDIA_API_BASE = "https://api.admedia.com/publisher/v1";
 const ADMEDIA_AID = process.env.NEXT_PUBLIC_ADMEDIA_AID ?? "";
@@ -235,9 +242,9 @@ export function calculateCampaignAdmediaMetrics(
 // Format USD value
 export function formatUsd(value: number): string {
     if (value >= 1000) {
-        return `$${(value / 1000).toFixed(1)}K`;
+        return `$${safeToFixed(value / 1000, 1)}K`;
     }
-    return `$${value.toFixed(2)}`;
+    return `$${safeToFixed(value, 2)}`;
 }
 
 // Get Admedia totals

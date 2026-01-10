@@ -5,6 +5,13 @@ import { useAlerts } from "@/lib/hooks";
 import { Alert, api, AlertConfig as ApiAlertConfig } from "@/lib/api";
 import { DataTable } from "@/components/data-table";
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 interface AlertConfig extends ApiAlertConfig {
     // Local extension if needed
 }
@@ -538,8 +545,8 @@ export default function AlertsPage() {
                                     )}
                                     {alert.context && (
                                         <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                                            <span>Z-Score: {(alert.context as any).z_score?.toFixed(2)}</span>
-                                            <span>Change: {(alert.context as any).percent_change?.toFixed(1)}%</span>
+                                            <span>Z-Score: {safeToFixed((alert.context as any).z_score, 2)}</span>
+                                            <span>Change: {safeToFixed((alert.context as any).percent_change, 1)}%</span>
                                         </div>
                                     )}
                                 </div>

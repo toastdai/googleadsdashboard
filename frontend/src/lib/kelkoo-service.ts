@@ -3,6 +3,13 @@
  * Fetches revenue and lead data from Kelkoo Reporting API for KL campaigns
  */
 
+// Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
+const safeToFixed = (value: any, decimals: number = 2): string => {
+    const num = Number(value);
+    if (isNaN(num) || !isFinite(num)) return "0";
+    return num.toFixed(decimals);
+};
+
 // Kelkoo API configuration
 const KELKOO_API_BASE = "https://api.kelkoogroup.net/publisher/reports/v1";
 const KELKOO_API_TOKEN = process.env.NEXT_PUBLIC_KELKOO_API_TOKEN || "";
@@ -189,9 +196,9 @@ export function calculateCampaignKelkooMetrics(
 // Format EUR value
 export function formatEur(value: number): string {
     if (value >= 1000) {
-        return `€${(value / 1000).toFixed(1)}K`;
+        return `€${safeToFixed(value / 1000, 1)}K`;
     }
-    return `€${value.toFixed(2)}`;
+    return `€${safeToFixed(value, 2)}`;
 }
 
 // Get Kelkoo totals
