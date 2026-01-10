@@ -1369,24 +1369,6 @@ export default function DashboardPage() {
                 bottomPerformers={bottomPerformers}
             />
 
-            {/* Google Ads Authentication Notice */}
-            {!liveSummary && (
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/40 via-gray-900 to-orange-900/40 p-5 border border-amber-500/30">
-                    <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                            <AlertTriangle className="w-5 h-5 text-amber-400" />
-                        </div>
-                        <div>
-                            <h3 className="text-base font-semibold text-amber-400 mb-1">Google Ads Data Not Available</h3>
-                            <p className="text-sm text-gray-300">
-                                Authentication required to fetch Google Ads metrics. Partner network data (Kelkoo, Admedia, MaxBounty) is displaying correctly below.
-                                To enable Google Ads data, please ensure backend authentication is configured.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* AI Summary */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 via-gray-900 to-cyan-900/40 p-6 border border-purple-500/20">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(139,92,246,0.15),transparent_50%)]" />

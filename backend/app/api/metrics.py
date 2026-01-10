@@ -17,7 +17,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.account import GoogleAdsAccount
 from app.models.metrics import DailyMetric, HourlyMetric
-from app.services.auth import get_current_user
+from app.services.auth import get_optional_user
 
 
 router = APIRouter()
@@ -29,17 +29,24 @@ async def get_daily_metrics(
     campaign_id: Optional[UUID] = Query(None),
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=7)),
     end_date: date = Query(default_factory=lambda: date.today() - timedelta(days=1)),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get daily metrics for specified accounts/campaigns."""
-    # Get user's account IDs if not specified
+    """Get daily metrics for specified accounts/campaigns. No authentication required."""
+    # Get account IDs - if user is logged in use their accounts, otherwise get all active accounts
     if not account_ids:
-        result = await db.execute(
-            select(GoogleAdsAccount.id)
-            .where(GoogleAdsAccount.user_id == current_user.id)
-            .where(GoogleAdsAccount.is_active == True)
-        )
+        if current_user:
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.user_id == current_user.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
+        else:
+            # No user logged in - get ALL active accounts
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
         account_ids = [row[0] for row in result.all()]
     
     if not account_ids:
@@ -97,17 +104,24 @@ async def get_hourly_metrics(
     account_ids: Optional[List[UUID]] = Query(None),
     campaign_id: Optional[UUID] = Query(None),
     target_date: date = Query(default_factory=lambda: date.today() - timedelta(days=1)),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get hourly metrics for spike detection analysis."""
-    # Get user's account IDs if not specified
+    """Get hourly metrics for spike detection analysis. No authentication required."""
+    # Get account IDs - if user is logged in use their accounts, otherwise get all active accounts
     if not account_ids:
-        result = await db.execute(
-            select(GoogleAdsAccount.id)
-            .where(GoogleAdsAccount.user_id == current_user.id)
-            .where(GoogleAdsAccount.is_active == True)
-        )
+        if current_user:
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.user_id == current_user.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
+        else:
+            # No user logged in - get ALL active accounts
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
         account_ids = [row[0] for row in result.all()]
     
     if not account_ids:
@@ -155,17 +169,24 @@ async def compare_periods(
     period1_end: date = Query(...),
     period2_start: date = Query(...),
     period2_end: date = Query(...),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Compare metrics between two periods."""
-    # Get user's account IDs if not specified
+    """Compare metrics between two periods. No authentication required."""
+    # Get account IDs - if user is logged in use their accounts, otherwise get all active accounts
     if not account_ids:
-        result = await db.execute(
-            select(GoogleAdsAccount.id)
-            .where(GoogleAdsAccount.user_id == current_user.id)
-            .where(GoogleAdsAccount.is_active == True)
-        )
+        if current_user:
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.user_id == current_user.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
+        else:
+            # No user logged in - get ALL active accounts
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
         account_ids = [row[0] for row in result.all()]
     
     if not account_ids:

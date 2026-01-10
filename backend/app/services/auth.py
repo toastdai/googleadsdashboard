@@ -23,8 +23,9 @@ from app.models.user import User
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT Bearer scheme
+# JWT Bearer scheme - auto_error=False allows optional auth
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -138,3 +139,44 @@ async def get_current_user(
         )
     
     return user
+
+
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """
+    Optional authentication dependency.
+    Returns the user if authenticated, None otherwise.
+    Used for public endpoints that can optionally use auth.
+    """
+    if credentials is None:
+        return None
+    
+    token = credentials.credentials
+    
+    try:
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        
+        if user_id is None:
+            return None
+        
+        # Check token expiration
+        exp = payload.get("exp")
+        if exp and datetime.utcnow() > datetime.fromtimestamp(exp):
+            return None
+        
+        # Get user from database
+        result = await db.execute(
+            select(User).where(User.id == UUID(user_id))
+        )
+        user = result.scalar_one_or_none()
+        
+        if user is None or not user.is_active:
+            return None
+        
+        return user
+        
+    except (JWTError, Exception):
+        return None

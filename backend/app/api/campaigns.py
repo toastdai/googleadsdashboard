@@ -19,7 +19,7 @@ from app.models.account import GoogleAdsAccount
 from app.models.campaign import Campaign, AdGroup, Keyword
 from app.models.metrics import DailyMetric
 from app.schemas.dashboard import CampaignSummary
-from app.services.auth import get_current_user
+from app.services.auth import get_optional_user
 
 
 router = APIRouter()
@@ -32,17 +32,24 @@ async def list_campaigns(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=7)),
     end_date: date = Query(default_factory=lambda: date.today() - timedelta(days=1)),
     limit: int = Query(default=50, le=200),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """List all campaigns with metrics summary."""
-    # Get user's account IDs if not specified
+    """List all campaigns with metrics summary. No authentication required."""
+    # Get account IDs - if user is logged in use their accounts, otherwise get all active accounts
     if not account_ids:
-        result = await db.execute(
-            select(GoogleAdsAccount.id)
-            .where(GoogleAdsAccount.user_id == current_user.id)
-            .where(GoogleAdsAccount.is_active == True)
-        )
+        if current_user:
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.user_id == current_user.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
+        else:
+            # No user logged in - get ALL active accounts
+            result = await db.execute(
+                select(GoogleAdsAccount.id)
+                .where(GoogleAdsAccount.is_active == True)
+            )
         account_ids = [row[0] for row in result.all()]
     
     if not account_ids:
@@ -113,16 +120,18 @@ async def list_campaigns(
 @router.get("/{campaign_id}")
 async def get_campaign(
     campaign_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get campaign details."""
-    result = await db.execute(
-        select(Campaign)
-        .join(GoogleAdsAccount)
-        .where(Campaign.id == campaign_id)
-        .where(GoogleAdsAccount.user_id == current_user.id)
-    )
+    """Get campaign details. No authentication required."""
+    # Build base query
+    query = select(Campaign).where(Campaign.id == campaign_id)
+    
+    # If user is logged in, verify access
+    if current_user:
+        query = query.join(GoogleAdsAccount).where(GoogleAdsAccount.user_id == current_user.id)
+    
+    result = await db.execute(query)
     campaign = result.scalar_one_or_none()
     
     if not campaign:
@@ -143,17 +152,18 @@ async def get_campaign_ad_groups(
     campaign_id: UUID,
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=7)),
     end_date: date = Query(default_factory=lambda: date.today() - timedelta(days=1)),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get ad groups for a campaign with metrics."""
-    # Verify campaign access
-    result = await db.execute(
-        select(Campaign)
-        .join(GoogleAdsAccount)
-        .where(Campaign.id == campaign_id)
-        .where(GoogleAdsAccount.user_id == current_user.id)
-    )
+    """Get ad groups for a campaign with metrics. No authentication required."""
+    # Build base query
+    query = select(Campaign).where(Campaign.id == campaign_id)
+    
+    # If user is logged in, verify access
+    if current_user:
+        query = query.join(GoogleAdsAccount).where(GoogleAdsAccount.user_id == current_user.id)
+    
+    result = await db.execute(query)
     campaign = result.scalar_one_or_none()
     
     if not campaign:
@@ -212,17 +222,18 @@ async def get_campaign_metrics(
     campaign_id: UUID,
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=7)),
     end_date: date = Query(default_factory=lambda: date.today() - timedelta(days=1)),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get daily metrics for a campaign."""
-    # Verify campaign access
-    result = await db.execute(
-        select(Campaign)
-        .join(GoogleAdsAccount)
-        .where(Campaign.id == campaign_id)
-        .where(GoogleAdsAccount.user_id == current_user.id)
-    )
+    """Get daily metrics for a campaign. No authentication required."""
+    # Build base query
+    query = select(Campaign).where(Campaign.id == campaign_id)
+    
+    # If user is logged in, verify access
+    if current_user:
+        query = query.join(GoogleAdsAccount).where(GoogleAdsAccount.user_id == current_user.id)
+    
+    result = await db.execute(query)
     campaign = result.scalar_one_or_none()
     
     if not campaign:
