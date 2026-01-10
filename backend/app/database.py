@@ -24,8 +24,8 @@ def get_async_database_url(url: str) -> str:
 # Check if database is configured
 DATABASE_CONFIGURED = (
     settings.database_url 
-    and settings.database_url != "postgresql://postgres:password@localhost:5432/tellspike"
-    and not settings.database_url.startswith("postgresql://localhost")
+    # and settings.database_url != "postgresql://postgres:password@localhost:5432/tellspike"
+    # and not settings.database_url.startswith("postgresql://localhost")
 )
 
 # Create async engine only if database is configured

@@ -98,7 +98,7 @@ async def root():
         "name": settings.app_name,
         "status": "healthy",
         "version": "1.0.0",
-        "database": "connected" if DATABASE_CONFIGURED else "not configured"
+        "database": "connected" if MONGODB_CONFIGURED else "not configured"
     }
 
 
@@ -107,7 +107,7 @@ async def health_check():
     """Detailed health check."""
     return {
         "status": "healthy",
-        "database": "connected" if DATABASE_CONFIGURED else "not configured",
+        "database": "connected" if MONGODB_CONFIGURED else "not configured",
         "environment": settings.app_env
     }
 

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     google_ads_developer_token: str = ""
     google_ads_client_id: str = ""
     google_ads_client_secret: str = ""
+    google_ads_refresh_token: str = ""
     google_ads_login_customer_id: Optional[str] = None
     
     # OAuth2

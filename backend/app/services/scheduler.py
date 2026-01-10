@@ -88,6 +88,27 @@ def start_scheduler():
         replace_existing=True,
         max_instances=1
     )
+
+    # Add Auto-Sync Job (Every 1 hour)
+    scheduler.add_job(
+        run_sync_recent_job,
+        trigger=IntervalTrigger(hours=1),
+        id="sync_recent",
+        name="Sync Recent Google Ads Data",
+        replace_existing=True,
+        max_instances=1
+    )
+
+    # Add Backfill Job (Every 6 hours)
+    scheduler.add_job(
+        run_backfill_job,
+        trigger=IntervalTrigger(hours=6),
+        id="backfill_history",
+        name="Backfill Historical Google Ads Data",
+        replace_existing=True,
+        max_instances=1
+    )
+    
     
     scheduler.start()
     logger.info(f"Scheduler started - checking for spikes every {check_interval_minutes} minutes, polling commands every 5 seconds")
@@ -119,12 +140,76 @@ def get_scheduler_status() -> dict:
         return {"running": False, "next_run": None}
     
     job = scheduler.get_job("spike_check")
-    if job:
-        next_run = job.next_run_time
-        return {
-            "running": scheduler.running,
-            "interval_minutes": int(os.getenv("SPIKE_CHECK_INTERVAL_MINUTES", "60")),
-            "next_run": next_run.isoformat() if next_run else None
-        }
-    
-    return {"running": scheduler.running, "next_run": None}
+    status = {
+        "running": scheduler.running,
+        "interval_minutes": int(os.getenv("SPIKE_CHECK_INTERVAL_MINUTES", "60")),
+        "jobs": []
+    }
+
+    for job in scheduler.get_jobs():
+        status["jobs"].append({
+            "id": job.id,
+            "next_run": job.next_run_time.isoformat() if job.next_run_time else None
+        })
+        
+    return status
+
+
+# New Jobs for Sync
+async def run_sync_recent_job():
+    """Job to sync recent data (hourly)."""
+    from app.database import async_session_maker
+    from app.services.google_ads import GoogleAdsService
+    from app.services.sync_service import SyncService
+    from app.config import settings
+    from sqlalchemy import select
+    from app.models.user import User
+
+    logger.info("Running sync_recent_job...")
+    async with async_session_maker() as session:
+        # Get primary user/manager info
+        result = await session.execute(select(User).limit(1))
+        user = result.scalar_one_or_none()
+        if not user:
+            logger.warning("No user found for sync job")
+            return
+
+        ga_service = GoogleAdsService()
+        sync_service = SyncService(session, ga_service)
+        
+        await sync_service.sync_recent(
+            manager_id=settings.google_ads_login_customer_id,
+            refresh_token=settings.google_ads_refresh_token,
+            user_id=user.id
+        )
+
+async def run_backfill_job():
+    """Job to backfill historical data (every 6 hours)."""
+    from app.database import async_session_maker
+    from app.services.google_ads import GoogleAdsService
+    from app.services.sync_service import SyncService
+    from app.config import settings
+    from sqlalchemy import select
+    from app.models.user import User
+
+    logger.info("Running backfill_history_job...")
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).limit(1))
+        user = result.scalar_one_or_none()
+        if not user:
+            return
+
+        ga_service = GoogleAdsService()
+        sync_service = SyncService(session, ga_service)
+        
+        await sync_service.backfill_history(
+            manager_id=settings.google_ads_login_customer_id,
+            refresh_token=settings.google_ads_refresh_token,
+            user_id=user.id
+        )
+
+# Update start_scheduler to include new jobs
+# We need to inject the new jobs into start_scheduler
+# Simplest way is essentially rewriting start_scheduler or appending the calls.
+# Since we are using multi_replace, let's target the start_scheduler function content.
+
