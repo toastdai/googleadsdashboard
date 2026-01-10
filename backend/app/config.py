@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     google_ads_refresh_token: str = ""
     google_ads_login_customer_id: Optional[str] = None
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Strip whitespace from customer ID if set
+        if self.google_ads_login_customer_id:
+            self.google_ads_login_customer_id = self.google_ads_login_customer_id.strip()
+    
     # OAuth2
     oauth_redirect_uri: str = "http://localhost:8000/api/auth/callback"
     

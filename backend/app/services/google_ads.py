@@ -178,9 +178,9 @@ class GoogleAdsService:
         }
         
         if self.login_customer_id:
-            # Ensure it's formatted as string without hyphens
-            formatted_id = str(self.login_customer_id).replace("-", "")
-            print(f"DEBUG _create_client: login_customer_id = {formatted_id}, len = {len(formatted_id)}")
+            # Ensure it's formatted as string without hyphens or whitespace
+            formatted_id = str(self.login_customer_id).replace("-", "").strip()
+            print(f"DEBUG _create_client: login_customer_id = '{formatted_id}', len = {len(formatted_id)}")
             config["login_customer_id"] = formatted_id
         else:
             print("DEBUG _create_client: No login_customer_id set")
