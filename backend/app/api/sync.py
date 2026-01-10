@@ -55,6 +55,9 @@ async def trigger_manual_sync(
                 detail="Google Ads credentials not configured on backend"
             )
         
+        # Ensure manager_id is properly formatted (10 digits, no hyphens)
+        manager_id = str(manager_id).replace("-", "")
+        
         # Run sync
         await sync_service.sync_all_accounts(
             manager_customer_id=manager_id,

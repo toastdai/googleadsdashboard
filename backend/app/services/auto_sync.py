@@ -66,6 +66,9 @@ async def run_auto_sync():
                 print("Google Ads credentials not configured, skipping sync")
                 return
             
+            # Ensure manager_id is properly formatted (10 digits, no hyphens)
+            manager_id = str(manager_id).replace("-", "")
+            
             # Sync for first user (or all users if needed)
             user = users[0]
             print(f"Syncing data for user: {user.email}")

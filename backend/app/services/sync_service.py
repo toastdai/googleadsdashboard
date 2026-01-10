@@ -75,6 +75,9 @@ class SyncService:
 
     async def _get_child_accounts(self, manager_id: str, refresh_token: str) -> List[Dict]:
         """Temporary helper to get child accounts until we move this to GoogleAdsService."""
+        # Ensure manager_id is properly formatted (10 digits, no hyphens)
+        manager_id = str(manager_id).replace("-", "")
+        
         client = self.google_ads_service._create_client(refresh_token)
         ga_service = client.get_service("GoogleAdsService")
 
