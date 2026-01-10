@@ -91,8 +91,9 @@ app.include_router(accounts.router, prefix="/api/accounts", tags=["Accounts"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
-app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
+# Telegram alerts FIRST - specific routes must come before generic /{id} routes
 app.include_router(alerts_telegram_router, tags=["Telegram Alerts"])  # Routes: /api/alerts/*
+app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(sync.router, prefix="/api", tags=["Sync"])
