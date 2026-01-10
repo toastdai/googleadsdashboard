@@ -48,6 +48,7 @@ async def trigger_manual_sync(
         sync_service = SyncService(db, google_ads_service)
         
         # Get user's Google Ads account (manager account with refresh token)
+        print(f"DEBUG Sync: Looking for manager account for user {current_user.email} (id={current_user.id})")
         result = await db.execute(
             select(GoogleAdsAccount)
             .where(GoogleAdsAccount.user_id == current_user.id)
@@ -57,9 +58,19 @@ async def trigger_manual_sync(
         manager_account = result.scalar_one_or_none()
         
         if not manager_account:
+            # Check if user has any accounts at all
+            all_accounts_result = await db.execute(
+                select(GoogleAdsAccount)
+                .where(GoogleAdsAccount.user_id == current_user.id)
+            )
+            all_accounts = all_accounts_result.scalars().all()
+            print(f"DEBUG Sync: User has {len(all_accounts)} total accounts")
+            for acc in all_accounts:
+                print(f"DEBUG Sync: Account {acc.customer_id} - is_manager={acc.is_manager}")
+            
             raise HTTPException(
                 status_code=400,
-                detail="No Google Ads manager account found. Please connect your account first."
+                detail="No Google Ads manager account found. Please sign out and sign in again to refresh your account connection."
             )
         
         # Use the manager account's customer ID and refresh token

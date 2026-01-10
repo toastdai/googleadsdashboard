@@ -59,9 +59,12 @@ async def oauth_callback(
         
         # Exchange code for tokens
         credentials = google_ads.exchange_code(code)
+        print(f"DEBUG OAuth: Got credentials, refresh_token exists = {bool(credentials.refresh_token)}")
+        print(f"DEBUG OAuth: Refresh token first 30 chars = {credentials.refresh_token[:30] if credentials.refresh_token else 'None'}")
         
         # Get user info from Google
         user_info = await google_ads.get_user_info(credentials)
+        print(f"DEBUG OAuth: User info = {user_info.get('email')}")
         
         # Check if user exists
         result = await db.execute(
@@ -82,9 +85,13 @@ async def oauth_callback(
         
         # Get accessible Google Ads accounts
         accounts = await google_ads.get_accessible_accounts(credentials)
+        print(f"DEBUG OAuth: Found {len(accounts)} accounts")
+        for acc in accounts:
+            print(f"DEBUG OAuth: Account {acc['customer_id']} - {acc['name']} (manager={acc.get('is_manager', False)})")
         
         # Save accounts to database
         for account_info in accounts:
+            print(f"DEBUG OAuth: Saving account {account_info['customer_id']}")
             # Check if account already exists
             existing = await db.execute(
                 select(GoogleAdsAccount).where(
@@ -96,10 +103,13 @@ async def oauth_callback(
             
             if existing_account:
                 # Update refresh token
+                print(f"DEBUG OAuth: Updating existing account {account_info['customer_id']}")
                 existing_account.refresh_token = credentials.refresh_token
                 existing_account.is_active = True
+                existing_account.is_manager = account_info.get("is_manager", False)
             else:
                 # Create new account
+                print(f"DEBUG OAuth: Creating new account {account_info['customer_id']} (manager={account_info.get('is_manager', False)})")
                 new_account = GoogleAdsAccount(
                     user_id=user.id,
                     customer_id=account_info["customer_id"],
@@ -110,6 +120,7 @@ async def oauth_callback(
                     is_active=True
                 )
                 db.add(new_account)
+                print(f"DEBUG OAuth: Account {account_info['customer_id']} added to session")
         
         # Create JWT token
         access_token = create_access_token(
