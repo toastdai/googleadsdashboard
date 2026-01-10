@@ -1,4 +1,4 @@
-// USD Column Fix - Deployed 2025-12-10
+// Dynamic Dashboard - Production Ready - 2025-01-10
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooData";
 import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
 import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDashboardData, BreakdownItem } from "@/hooks/useDashboardData";
 import { DateRangePicker } from "@/components/date-range-picker";
 import {
     RefreshCw,
@@ -25,6 +25,11 @@ import {
     formatNumber,
     Campaign
 } from "@/lib/campaign-data";
+import {
+    calculateHealthScore,
+    calculateEfficiencyRating,
+    calculateRiskLevel
+} from "@/lib/dashboard-utils";
 import {
     MetricsAreaChart,
     MetricsBarChart,
@@ -329,7 +334,7 @@ const EnhancedKPICard = ({
 };
 
 // Campaign modal
-const CampaignModal = ({ campaign, onClose }: { campaign: Campaign | null; onClose: () => void }) => {
+const CampaignModal = ({ campaign, onClose }: { campaign: (Campaign & { actualROAS?: number; kelkooRevenueInr?: number; admediaEarningsInr?: number; maxBountyEarningsInr?: number; conversion_value?: number }) | null; onClose: () => void }) => {
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -341,8 +346,10 @@ const CampaignModal = ({ campaign, onClose }: { campaign: Campaign | null; onClo
     if (!campaign) return null;
 
     const cpa = campaign.cost / Math.max(campaign.conversions, 1);
-    const estimatedValue = campaign.conversions * 500;
-    const roas = estimatedValue / campaign.cost;
+    // Use actual conversion_value or partner revenue for ROAS
+    const partnerRevenue = (campaign.kelkooRevenueInr || 0) + (campaign.admediaEarningsInr || 0) + (campaign.maxBountyEarningsInr || 0);
+    const conversionValue = campaign.conversion_value || partnerRevenue || 0;
+    const roas = campaign.actualROAS || (campaign.cost > 0 ? conversionValue / campaign.cost : 0);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -437,11 +444,11 @@ const CampaignModal = ({ campaign, onClose }: { campaign: Campaign | null; onClo
     );
 };
 
-// Quick stats bar
-const QuickStatsBar = ({ campaigns: campList }: { campaigns: Campaign[] }) => {
+// Quick stats bar - uses enriched campaigns with calculated metrics
+const QuickStatsBar = ({ campaigns: campList }: { campaigns: any[] }) => {
     const activeCampaigns = campList.filter(c => c.status === "Enabled").length;
-    const highPerformers = campList.filter(c => c.conversionRate >= 50).length;
-    const needsAttention = campList.filter(c => c.statusReasons && c.statusReasons.length > 0).length;
+    const highPerformers = campList.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length;
+    const needsAttention = campList.filter(c => c.riskLevel === "Medium" || c.riskLevel === "High").length;
 
     return (
         <div className="flex items-center gap-6 p-4 bg-gray-800/30 rounded-xl border border-gray-700/50 mb-6">
@@ -605,6 +612,20 @@ const ROASIcon = () => (
     </svg>
 );
 
+// Helper to format date range for display
+const formatDateRangeLabel = (startDate: string, endDate: string): string => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    
+    if (startMonth === endMonth.split(' ')[0]) {
+        // Same month
+        return `${startMonth} ${start.getDate()}-${end.getDate()}, ${end.getFullYear()}`;
+    }
+    return `${startMonth} ${start.getDate()} - ${endMonth.split(' ')[0]} ${end.getDate()}, ${end.getFullYear()}`;
+};
+
 export default function DashboardPage() {
     // Date State - Default to Last 30 Days (like Google Ads)
     const today = new Date();
@@ -619,6 +640,9 @@ export default function DashboardPage() {
         start: startDate, // Default to last 30 days
         end: endDate
     });
+
+    // Dynamic date label for partner sections
+    const dateRangeLabel = useMemo(() => formatDateRangeLabel(dateRange.start, dateRange.end), [dateRange]);
 
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
     const [selectedMetric, setSelectedMetric] = useState<"clicks" | "cost" | "conversions">("clicks");
@@ -728,16 +752,40 @@ export default function DashboardPage() {
         };
     };
 
-    // Enrich campaigns with live Kelkoo and Admedia data
+    // Enrich campaigns with live Kelkoo, Admedia, MaxBounty data AND calculate AI metrics
     const liveEnrichedCampaigns = useMemo(() => {
-        // Map live backend data to Campaign interface (approx)
-        let result = liveTopCampaigns.map(c => ({
-            ...c,
-            // Map conversion_value to revenue if missing
-            revenue: c.conversion_value || 0,
-            status: "Active", // Default status as backend filters active usually, or add status to backend
-            roas: c.cost > 0 ? (c.conversion_value || 0) / c.cost : 0,
-        })) as any[];
+        // Map live backend data to Campaign interface with calculated metrics
+        let result = liveTopCampaigns.map(c => {
+            // Calculate derived metrics from raw data
+            const avgCpc = c.clicks > 0 ? c.cost / c.clicks : 0;
+            const conversionRate = c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0;
+            
+            // Create enriched campaign object
+            const enrichedCampaign = {
+                ...c,
+                id: c.id || c.name, // Use name as fallback ID
+                avgCpc,
+                conversionRate,
+                // Map conversion_value to revenue if missing
+                revenue: c.conversion_value || 0,
+                status: "Enabled", // Backend returns active campaigns
+                roas: c.cost > 0 ? (c.conversion_value || 0) / c.cost : 0,
+                // Network flags
+                ...detectNetwork(c.name),
+            };
+            
+            // Calculate AI-based health metrics using the same input format as BreakdownItem
+            const healthScore = calculateHealthScore(c as BreakdownItem);
+            const efficiencyRating = calculateEfficiencyRating(c as BreakdownItem);
+            const riskLevel = calculateRiskLevel(c as BreakdownItem);
+            
+            return {
+                ...enrichedCampaign,
+                healthScore,
+                efficiencyRating,
+                riskLevel,
+            };
+        }) as any[];
 
         // Enrich with Kelkoo data
         if (kelkooApiData) {
@@ -797,7 +845,7 @@ export default function DashboardPage() {
         }
 
         return result;
-    }, [kelkooApiData, admediaApiData, maxBountyApiData]);
+    }, [liveTopCampaigns, kelkooApiData, admediaApiData, maxBountyApiData]);
 
     const filteredCampaigns = useMemo(() => {
         return liveEnrichedCampaigns.filter(c => {
@@ -947,11 +995,19 @@ export default function DashboardPage() {
         });
     }
 
-    // Derived calculations
+    // Derived calculations - use actual conversion_value from API
     const avgROAS = useMemo(() => {
-        const totalValue = totals.conversions * 500;
-        return totalValue / totals.cost;
-    }, [totals]);
+        // Use actual conversion_value if available from liveSummary, else calculate from partner data
+        const totalConversionValue = liveSummary?.conversion_value?.value || 0;
+        if (totalConversionValue > 0 && totals.cost > 0) {
+            return totalConversionValue / totals.cost;
+        }
+        // Fallback: Calculate from partner revenue
+        const partnerRevenue = networkComparison.kelkoo.revenueInr + 
+                              networkComparison.admedia.revenueInr + 
+                              networkComparison.maxbounty.revenueInr;
+        return totals.cost > 0 ? partnerRevenue / totals.cost : 0;
+    }, [totals, liveSummary, networkComparison]);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const budgetUtilization = useMemo(() => {
@@ -1278,7 +1334,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Stats Bar */}
-            <QuickStatsBar campaigns={liveTopCampaigns as any[]} />
+            <QuickStatsBar campaigns={liveEnrichedCampaigns as any[]} />
 
             {/* View Banner - Shows different content based on selected tab */}
             <ViewBanner 
@@ -1421,7 +1477,7 @@ export default function DashboardPage() {
                 <div className="bg-gradient-to-br from-cyan-900/20 to-purple-900/20 rounded-xl border border-cyan-500/20 p-5">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="px-2 py-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded text-xs font-bold text-white">KL</div>
-                        <h3 className="text-lg font-semibold text-white">Kelkoo (October 2025)</h3>
+                        <h3 className="text-lg font-semibold text-white">Kelkoo ({dateRangeLabel})</h3>
                         {kelkooLoading ? (
                             <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
                         ) : kelkooIsFallback ? (
@@ -1514,7 +1570,7 @@ export default function DashboardPage() {
                 <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 rounded-xl border border-amber-500/20 p-5">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded text-xs font-bold text-white">AM</div>
-                        <h3 className="text-lg font-semibold text-white">Admedia (October 2025)</h3>
+                        <h3 className="text-lg font-semibold text-white">Admedia ({dateRangeLabel})</h3>
                         {admediaLoading ? (
                             <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
                         ) : admediaIsFallback ? (
@@ -1588,7 +1644,7 @@ export default function DashboardPage() {
                 <div className="bg-gradient-to-br from-rose-900/20 to-red-900/20 rounded-xl border border-rose-500/20 p-5">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</div>
-                        <h3 className="text-lg font-semibold text-white">MaxBounty (Oct 2025)</h3>
+                        <h3 className="text-lg font-semibold text-white">MaxBounty ({dateRangeLabel})</h3>
                         {maxBountyLoading ? (
                             <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
                         ) : maxBountyIsFallback ? (
