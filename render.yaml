@@ -30,6 +30,13 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: "https://frontend-mu-lake.vercel.app"
+      # Telegram Bot Configuration (for FREE spike alerts)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: SPIKE_THRESHOLD_PERCENT
+        value: "20"
 
 databases:
   # Managed PostgreSQL
