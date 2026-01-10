@@ -21,18 +21,8 @@ import {
     Activity,
 } from "lucide-react";
 import {
-    campaigns,
-    enrichedCampaigns,
-    totals,
-    accountBreakdown,
-    topPerformers,
-    bottomPerformers,
-    dailyTrend,
     formatCurrency,
     formatNumber,
-    kelkooAggregates,
-    admediaAggregates,
-    aiMetrics,
     Campaign
 } from "@/lib/campaign-data";
 import {
@@ -469,7 +459,27 @@ const QuickStatsBar = ({ campaigns: campList }: { campaigns: Campaign[] }) => {
 };
 
 // View Banner - Shows different content based on selected view tab
-const ViewBanner = ({ view, liveKelkooRevenueInr }: { view: "overview" | "performance" | "budget"; liveKelkooRevenueInr: number }) => {
+const ViewBanner = ({ 
+    view, 
+    liveKelkooRevenueInr,
+    totals,
+    topPerformers,
+    bottomPerformers
+}: { 
+    view: "overview" | "performance" | "budget"; 
+    liveKelkooRevenueInr: number;
+    totals: {
+        clicks: number;
+        impressions: number;
+        cost: number;
+        conversions: number;
+        ctr: number;
+        avgCpc: number;
+        totalBudget: number;
+    };
+    topPerformers: any[];
+    bottomPerformers: any[];
+}) => {
     if (view === "overview") return null; // Overview shows default content
 
     if (view === "performance") {
@@ -633,7 +643,7 @@ export default function DashboardPage() {
             cpc: 0,
             vpl: 0,
             conversionRate: 0,
-            klCampaignCount: kelkooAggregates.klCampaignCount,
+            klCampaignCount: 0,
         };
         const EUR_TO_INR = 89.5;
         return {
@@ -646,7 +656,7 @@ export default function DashboardPage() {
             cpc: kelkooApiData.leadEstimatedRevenueInEur / kelkooApiData.leadCount,
             vpl: kelkooApiData.valuePerLeadInEur,
             conversionRate: kelkooApiData.crPercentage,
-            klCampaignCount: kelkooAggregates.klCampaignCount,
+            klCampaignCount: 0, // Will be computed from liveEnrichedCampaigns
         };
     }, [kelkooApiData]);
 
@@ -658,7 +668,7 @@ export default function DashboardPage() {
             totalEarningsUsd: 0,
             totalEarningsInr: 0,
             conversionRate: 0,
-            amCampaignCount: admediaAggregates.amCampaignCount,
+            amCampaignCount: 0,
             cpc: 0,
             cpl: 0,
         };
@@ -668,7 +678,7 @@ export default function DashboardPage() {
             totalEarningsUsd: admediaApiData.earnings,
             totalEarningsInr: admediaApiData.earningsInr,
             conversionRate: admediaApiData.leads > 0 ? (admediaApiData.conversions / admediaApiData.leads) * 100 : 0,
-            amCampaignCount: admediaAggregates.amCampaignCount,
+            amCampaignCount: 0, // Will be computed from liveEnrichedCampaigns
             cpc: admediaApiData.cpc,
             cpl: admediaApiData.cpl,
         };
@@ -824,6 +834,44 @@ export default function DashboardPage() {
         return stats;
     }, [liveEnrichedCampaigns]);
 
+    // Compute totals from live data
+    const totals = useMemo(() => {
+        const result = {
+            clicks: liveSummary?.clicks.value || 0,
+            impressions: liveSummary?.impressions.value || 0,
+            cost: liveSummary?.cost.value || 0,
+            conversions: liveSummary?.conversions.value || 0,
+            ctr: liveSummary?.ctr.value || 0,
+            avgCpc: liveSummary?.cpc.value || 0,
+            totalBudget: 0
+        };
+        
+        // Calculate total budget from campaigns
+        liveEnrichedCampaigns.forEach(c => {
+            if (c.budget) result.totalBudget += c.budget;
+        });
+        
+        return result;
+    }, [liveSummary, liveEnrichedCampaigns]);
+    
+    // Compute conversion rate
+    const conversionRate = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
+
+    // Compute top and bottom performers from live data
+    const topPerformers = useMemo(() => {
+        return liveEnrichedCampaigns
+            .filter(c => c.status === "Enabled" && c.conversions > 0)
+            .sort((a, b) => (b.conversions / (b.cost || 1)) - (a.conversions / (a.cost || 1)))
+            .slice(0, 5);
+    }, [liveEnrichedCampaigns]);
+
+    const bottomPerformers = useMemo(() => {
+        return liveEnrichedCampaigns
+            .filter(c => c.status === "Enabled" && c.cost > 1000)
+            .sort((a, b) => (a.conversions / (a.cost || 1)) - (b.conversions / (b.cost || 1)))
+            .slice(0, 5);
+    }, [liveEnrichedCampaigns]);
+
     // Keyboard shortcuts
     useKeyboardShortcut('k', () => setShowCommandPalette(true), true);
     useKeyboardShortcut('?', () => setShowCommandPalette(true));
@@ -845,9 +893,9 @@ export default function DashboardPage() {
         const headers = ["Campaign", "Account", "Clicks", "Impressions", "Cost", "Conversions", "CTR", "Conv Rate"];
         const csvContent = [
             headers.join(","),
-            ...campaigns.map(c => [
+            ...liveEnrichedCampaigns.map(c => [
                 `"${c.name}"`,
-                c.account,
+                c.account || "",
                 c.clicks,
                 c.impressions,
                 c.cost.toFixed(2),
@@ -893,13 +941,37 @@ export default function DashboardPage() {
     const avgROAS = useMemo(() => {
         const totalValue = totals.conversions * 500;
         return totalValue / totals.cost;
-    }, []);
+    }, [totals]);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const budgetUtilization = useMemo(() => {
         const totalBudget = totals.totalBudget * 31; // Monthly budget
-        return (totals.cost / totalBudget) * 100;
-    }, []);
+        return totalBudget > 0 ? (totals.cost / totalBudget) * 100 : 0;
+    }, [totals]);
+
+    // Compute daily trend from live timeseries data
+    const dailyTrend = useMemo(() => {
+        if (!liveTrends || liveTrends.length === 0) return [];
+        
+        // Get all dates from the first metric
+        const dates = liveTrends[0]?.data || [];
+        
+        return dates.map(datePoint => {
+            const clicks = liveTrends.find(m => m.metric === "clicks")?.data.find(d => d.date === datePoint.date)?.value || 0;
+            const impressions = liveTrends.find(m => m.metric === "impressions")?.data.find(d => d.date === datePoint.date)?.value || 0;
+            const cost = liveTrends.find(m => m.metric === "cost")?.data.find(d => d.date === datePoint.date)?.value || 0;
+            const conversions = liveTrends.find(m => m.metric === "conversions")?.data.find(d => d.date === datePoint.date)?.value || 0;
+            
+            return {
+                date: datePoint.date,
+                clicks,
+                impressions,
+                cost,
+                conversions,
+                ctr: impressions > 0 ? (clicks / impressions) * 100 : 0
+            };
+        });
+    }, [liveTrends]);
 
     // Sparkline data
     const clicksSparkData = dailyTrend.slice(-14).map(d => d.clicks);
@@ -1190,7 +1262,7 @@ export default function DashboardPage() {
                         ))}
                     </div>
                     <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25">
-                        {totals.campaignCount} Campaigns
+                        {liveEnrichedCampaigns.length} Campaigns
                     </span>
                 </div>
             </div>
@@ -1199,7 +1271,13 @@ export default function DashboardPage() {
             <QuickStatsBar campaigns={liveTopCampaigns as any[]} />
 
             {/* View Banner - Shows different content based on selected tab */}
-            <ViewBanner view={selectedView} liveKelkooRevenueInr={liveKelkooAggregates.totalRevenueInr + liveKelkooAggregates.totalSaleValueInr} />
+            <ViewBanner 
+                view={selectedView} 
+                liveKelkooRevenueInr={liveKelkooAggregates.totalRevenueInr + liveKelkooAggregates.totalSaleValueInr} 
+                totals={totals}
+                topPerformers={topPerformers}
+                bottomPerformers={bottomPerformers}
+            />
 
             {/* AI Summary */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 via-gray-900 to-cyan-900/40 p-6 border border-purple-500/20">
@@ -1239,9 +1317,9 @@ export default function DashboardPage() {
                         type: "health",
                         title: "Campaign Health Analysis",
                         data: {
-                            score: aiMetrics.averageHealthScore,
-                            campaigns: enrichedCampaigns.filter(c => (c.healthScore || 0) >= 70).length,
-                            topCampaigns: enrichedCampaigns.sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0)).slice(0, 5),
+                            score: liveEnrichedCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / Math.max(liveEnrichedCampaigns.length, 1),
+                            campaigns: liveEnrichedCampaigns.filter(c => (c.healthScore || 0) >= 70).length,
+                            topCampaigns: [...liveEnrichedCampaigns].sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0)).slice(0, 5),
                         }
                     })}
                     className="bg-gradient-to-br from-purple-900/30 to-purple-900/10 rounded-xl border border-purple-500/30 p-4 text-left hover:border-purple-400/50 transition-all hover:scale-[1.02]"
@@ -1250,7 +1328,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-purple-400 font-medium">Avg Health Score</span>
                         <Activity className="w-5 h-5 text-purple-400" />
                     </div>
-                    <p className="text-2xl font-bold text-white">{aiMetrics.averageHealthScore}</p>
+                    <p className="text-2xl font-bold text-white">{Math.round(liveEnrichedCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / Math.max(liveEnrichedCampaigns.length, 1))}</p>
                     <p className="text-xs text-gray-500 mt-1">Out of 100</p>
                 </button>
                 <button
@@ -1258,8 +1336,8 @@ export default function DashboardPage() {
                         type: "performers",
                         title: "High Performing Campaigns",
                         data: {
-                            count: aiMetrics.highPerformers,
-                            campaigns: enrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B"),
+                            count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length,
+                            campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B"),
                         }
                     })}
                     className="bg-gradient-to-br from-emerald-900/30 to-emerald-900/10 rounded-xl border border-emerald-500/30 p-4 text-left hover:border-emerald-400/50 transition-all hover:scale-[1.02]"
@@ -1268,7 +1346,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-emerald-400 font-medium">High Performers</span>
                         <Star className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <p className="text-2xl font-bold text-emerald-400">{aiMetrics.highPerformers}</p>
+                    <p className="text-2xl font-bold text-emerald-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length}</p>
                     <p className="text-xs text-gray-500 mt-1">A/B Rated Campaigns</p>
                 </button>
                 <button
@@ -1276,8 +1354,8 @@ export default function DashboardPage() {
                         type: "attention",
                         title: "Campaigns Needing Attention",
                         data: {
-                            count: aiMetrics.needsAttention,
-                            campaigns: enrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D"),
+                            count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D").length,
+                            campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D"),
                         }
                     })}
                     className="bg-gradient-to-br from-amber-900/30 to-amber-900/10 rounded-xl border border-amber-500/30 p-4 text-left hover:border-amber-400/50 transition-all hover:scale-[1.02]"
@@ -1286,7 +1364,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-amber-400 font-medium">Needs Attention</span>
                         <AlertTriangle className="w-5 h-5 text-amber-400" />
                     </div>
-                    <p className="text-2xl font-bold text-amber-400">{aiMetrics.needsAttention}</p>
+                    <p className="text-2xl font-bold text-amber-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D").length}</p>
                     <p className="text-xs text-gray-500 mt-1">Medium Risk</p>
                 </button>
                 <button
@@ -1294,8 +1372,8 @@ export default function DashboardPage() {
                         type: "risk",
                         title: "At Risk Campaigns",
                         data: {
-                            count: aiMetrics.atRiskCampaigns,
-                            campaigns: enrichedCampaigns.filter(c => c.efficiencyRating === "F"),
+                            count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F").length,
+                            campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F"),
                         }
                     })}
                     className="bg-gradient-to-br from-rose-900/30 to-rose-900/10 rounded-xl border border-rose-500/30 p-4 text-left hover:border-rose-400/50 transition-all hover:scale-[1.02]"
@@ -1304,7 +1382,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-rose-400 font-medium">At Risk</span>
                         <AlertCircle className="w-5 h-5 text-rose-400" />
                     </div>
-                    <p className="text-2xl font-bold text-rose-400">{aiMetrics.atRiskCampaigns}</p>
+                    <p className="text-2xl font-bold text-rose-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F").length}</p>
                     <p className="text-xs text-gray-500 mt-1">High Risk Campaigns</p>
                 </button>
             </div>
@@ -1578,7 +1656,7 @@ export default function DashboardPage() {
                 <EnhancedKPICard
                     title="Conversions"
                     value={liveSummary ? formatNumber(liveSummary.conversions.value) : formatNumber(totals.conversions)}
-                    subtitle={liveSummary ? `${(liveSummary.conversions.value / liveSummary.clicks.value * 100).toFixed(1)}% rate` : `${totals.conversionRate.toFixed(1)}% rate`}
+                    subtitle={liveSummary ? `${(liveSummary.conversions.value / liveSummary.clicks.value * 100).toFixed(1)}% rate` : `${conversionRate.toFixed(1)}% rate`}
                     trend={liveSummary?.conversions.change_percent ? `${liveSummary.conversions.change_percent.toFixed(1)}%` : "+15.3%"}
                     trendUp={liveSummary?.conversions.change_direction === "up"}
                     icon={<ConversionsIcon />}
@@ -1885,12 +1963,12 @@ export default function DashboardPage() {
                                         <>
                                             <li>- Average CTR of {totals.ctr.toFixed(2)}% is above industry average</li>
                                             <li>- Best performer: {topPerformers[0]?.name} at {topPerformers[0]?.ctr.toFixed(2)}%</li>
-                                            <li>- {campaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
+                                            <li>- {liveEnrichedCampaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
                                         </>
                                     )}
                                     {activeKPI === "cpc" && (
                                         <>
-                                            <li>- Average CPC of Rs.{totals.avgCpc.toFixed(0)} across {campaigns.length} campaigns</li>
+                                            <li>- Average CPC of Rs.{totals.avgCpc.toFixed(0)} across {liveEnrichedCampaigns.length} campaigns</li>
                                             <li>- Total clicks: {totals.clicks.toLocaleString()}</li>
                                             <li>- Consider bid adjustments for high CPC campaigns</li>
                                         </>
@@ -1899,13 +1977,13 @@ export default function DashboardPage() {
                                         <>
                                             <li>- Average CPA: Rs.{(totals.cost / totals.conversions).toFixed(0)} per conversion</li>
                                             <li>- Total conversions: {totals.conversions.toLocaleString()}</li>
-                                            <li>- {campaigns.filter(c => c.conversionRate > 50).length} high-converting campaigns</li>
+                                            <li>- {liveEnrichedCampaigns.filter(c => c.conversionRate > 50).length} high-converting campaigns</li>
                                         </>
                                     )}
                                     {activeKPI === "roas" && (
                                         <>
                                             <li>- Average ROAS: {avgROAS.toFixed(2)}x return on ad spend</li>
-                                            <li>- {campaigns.filter(c => c.conversions > 200).length} campaigns with 200+ conversions</li>
+                                            <li>- {liveEnrichedCampaigns.filter(c => c.conversions > 200).length} campaigns with 200+ conversions</li>
                                             <li>- Total ad spend: {formatCurrency(totals.cost)}</li>
                                         </>
                                     )}

@@ -60,10 +60,14 @@ export default function CampaignsPage() {
     const [typeFilter, setTypeFilter] = useState<string>("all");
     const [networkFilter, setNetworkFilter] = useState<string>("all");
 
+    // Date range - default to current month
+    const today = new Date().toISOString().split('T')[0];
+    const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+
     // Fetch partner data
-    const { data: kelkooData, loading: kelkooLoading, refetch: refetchKelkoo } = useKelkooData();
-    const { data: admediaData, loading: admediaLoading, refetch: refetchAdmedia } = useAdmediaData();
-    const { data: maxBountyData, loading: maxBountyLoading, refetch: refetchMaxBounty } = useMaxBountyData();
+    const { data: kelkooData, loading: kelkooLoading, refetch: refetchKelkoo } = useKelkooData(firstDayOfMonth, today);
+    const { data: admediaData, loading: admediaLoading, refetch: refetchAdmedia } = useAdmediaData(firstDayOfMonth, today);
+    const { data: maxBountyData, loading: maxBountyLoading, refetch: refetchMaxBounty } = useMaxBountyData(firstDayOfMonth, today);
 
     useEffect(() => {
         // Simulate initial load
