@@ -11,6 +11,7 @@ from app.mongodb import init_mongodb, close_mongodb, MONGODB_CONFIGURED
 from app.api import auth, accounts, dashboard, campaigns, metrics, alerts, reports, notifications, sync
 from app.api.alerts_telegram import router as alerts_telegram_router
 from app.services.scheduler import start_scheduler, stop_scheduler
+from app.services.auto_sync import start_auto_sync_scheduler, stop_auto_sync_scheduler
 
 
 @asynccontextmanager
@@ -33,10 +34,15 @@ async def lifespan(app: FastAPI):
     print("Starting background scheduler for spike alerts...")
     start_scheduler()
     
+    # Start auto-sync scheduler (runs every 6 hours)
+    print("Starting auto-sync scheduler (every 6 hours)...")
+    start_auto_sync_scheduler()
+    
     yield
     
     # Shutdown: Stop scheduler and close MongoDB
     stop_scheduler()
+    stop_auto_sync_scheduler()
     await close_mongodb()
 
 

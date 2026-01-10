@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useTheme } from "@/components/theme-provider";
+import { RefreshCw } from "lucide-react";
 
 interface NotificationChannel {
     id: string;
@@ -22,6 +23,9 @@ interface AlertSetting {
 export default function SettingsPage() {
     const { user } = useAuth();
     const { theme, setTheme } = useTheme();
+    const [syncing, setSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState("");
+    const [syncDays, setSyncDays] = useState(30);
 
     const [channels, setChannels] = useState<NotificationChannel[]>([
         { id: "1", type: "EMAIL", name: "Primary Email", config: { email: user?.email || "user@example.com" }, enabled: true },
@@ -70,6 +74,39 @@ export default function SettingsPage() {
         );
     };
 
+    const handleSync = async () => {
+        setSyncing(true);
+        setSyncMessage("");
+        
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"}/sync/trigger?days=${syncDays}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                    },
+                }
+            );
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                setSyncMessage(`✅ Successfully synced ${syncDays} days of Google Ads data!`);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                setSyncMessage(`❌ Sync failed: ${data.detail || "Unknown error"}`);
+            }
+        } catch (error) {
+            setSyncMessage(`❌ Sync error: ${error instanceof Error ? error.message : "Unknown error"}`);
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-fade-in max-w-4xl">
             {/* Header */}
@@ -79,6 +116,64 @@ export default function SettingsPage() {
                     Configure your notifications, alerts, and preferences
                 </p>
             </div>
+
+            {/* Google Ads Sync Section */}
+            <section className="bg-gradient-to-br from-purple-900/20 to-cyan-900/20 rounded-2xl border border-purple-500/20 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-display font-semibold text-white">Google Ads Data Sync</h2>
+                        <p className="text-sm text-gray-400">Manually sync your Google Ads data</p>
+                    </div>
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Number of days to sync
+                        </label>
+                        <select
+                            value={syncDays}
+                            onChange={(e) => setSyncDays(parseInt(e.target.value))}
+                            className="w-full md:w-48 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            disabled={syncing}
+                        >
+                            <option value={7}>Last 7 days</option>
+                            <option value={30}>Last 30 days</option>
+                            <option value={60}>Last 60 days</option>
+                            <option value={90}>Last 90 days</option>
+                        </select>
+                    </div>
+                    
+                    <button
+                        onClick={handleSync}
+                        disabled={syncing}
+                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-xl font-medium transition-all disabled:cursor-not-allowed"
+                    >
+                        <RefreshCw className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`} />
+                        {syncing ? "Syncing..." : "Sync Now"}
+                    </button>
+                    
+                    {syncMessage && (
+                        <div className={`p-4 rounded-xl border ${
+                            syncMessage.startsWith("✅") 
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                        }`}>
+                            {syncMessage}
+                        </div>
+                    )}
+                    
+                    <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <p className="text-xs text-gray-400">
+                            <strong className="text-gray-300">Note:</strong> Auto-sync runs every 6 hours automatically. 
+                            Use manual sync if you need immediate data refresh. Large date ranges (60-90 days) may take several minutes.
+                        </p>
+                    </div>
+                </div>
+            </section>
 
             {/* Profile Section */}
             <section className="bg-card rounded-2xl border border-border p-6">
