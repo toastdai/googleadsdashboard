@@ -294,11 +294,12 @@ export default function CampaignsPage() {
         },
     ];
 
-    // Stats calculations
-    const totalSpend = filteredCampaigns.reduce((sum, c) => sum + c.cost, 0);
-    const totalConversions = filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0);
-    const avgRoas = filteredCampaigns.length > 0 
-        ? filteredCampaigns.reduce((sum, c) => sum + c.roas, 0) / filteredCampaigns.filter(c => c.roas > 0).length 
+    // Stats calculations - ensure proper number handling for Decimal values from backend
+    const totalSpend = filteredCampaigns.reduce((sum, c) => sum + (Number(c.cost) || 0), 0);
+    const totalConversions = filteredCampaigns.reduce((sum, c) => sum + (Number(c.conversions) || 0), 0);
+    const campaignsWithRoas = filteredCampaigns.filter(c => c.roas > 0);
+    const avgRoas = campaignsWithRoas.length > 0 
+        ? filteredCampaigns.reduce((sum, c) => sum + (Number(c.roas) || 0), 0) / campaignsWithRoas.length 
         : 0;
     // Use health score average instead of optimization score (not available from backend)
     const avgHealthScore = filteredCampaigns.length > 0
@@ -345,11 +346,11 @@ export default function CampaignsPage() {
                     <p className="text-xs text-muted-foreground">Active</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-warning-500">₹{safeToFixed(totalSpend / 100000, 1)}L</p>
+                    <p className="text-2xl font-bold text-warning-500">₹{totalSpend >= 100000 ? safeToFixed(totalSpend / 100000, 1) + 'L' : safeToFixed(totalSpend, 0)}</p>
                     <p className="text-xs text-muted-foreground">Total Spend</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">
-                    <p className="text-2xl font-bold text-foreground">{totalConversions.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-foreground">{safeToFixed(totalConversions, 0)}</p>
                     <p className="text-xs text-muted-foreground">Conversions</p>
                 </div>
                 <div className="bg-card rounded-xl border border-border p-4 text-center">

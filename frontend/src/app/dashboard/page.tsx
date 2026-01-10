@@ -756,22 +756,34 @@ export default function DashboardPage() {
     const liveEnrichedCampaigns = useMemo(() => {
         // Map live backend data to Campaign interface with calculated metrics
         let result = liveTopCampaigns.map(c => {
+            // Convert Decimal values from backend to Numbers
+            const cost = Number(c.cost) || 0;
+            const clicks = Number(c.clicks) || 0;
+            const conversions = Number(c.conversions) || 0;
+            const conversionValue = Number(c.conversion_value) || 0;
+            const impressions = Number(c.impressions) || 0;
+            
             // Calculate derived metrics from raw data
-            const avgCpc = c.clicks > 0 ? c.cost / c.clicks : 0;
-            const conversionRate = c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0;
-            const cpa = c.conversions > 0 ? c.cost / c.conversions : 0;
+            const avgCpc = clicks > 0 ? cost / clicks : 0;
+            const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
+            const cpa = conversions > 0 ? cost / conversions : 0;
             
             // Create enriched campaign object
             const enrichedCampaign = {
                 ...c,
                 id: c.id || c.name, // Use name as fallback ID
+                cost,
+                clicks,
+                conversions,
+                impressions,
+                conversion_value: conversionValue,
                 avgCpc,
                 conversionRate,
                 cpa,
                 // Map conversion_value to revenue if missing
-                revenue: c.conversion_value || 0,
+                revenue: conversionValue,
                 status: "Enabled", // Backend returns active campaigns
-                roas: c.cost > 0 ? (c.conversion_value || 0) / c.cost : 0,
+                roas: cost > 0 ? conversionValue / cost : 0,
                 // Network flags
                 ...detectNetwork(c.name),
             };
@@ -881,16 +893,18 @@ export default function DashboardPage() {
         };
 
         liveEnrichedCampaigns.forEach(c => {
-            const net = detectNetwork(c.name);
-            if (net.isKelkoo) {
-                stats.kelkoo.cost += c.cost || 0;
-                stats.kelkoo.revenueInr += c.kelkooRevenueInr || 0;
-            } else if (net.isAdmedia) {
-                stats.admedia.cost += c.cost || 0;
-                stats.admedia.revenueInr += c.admediaEarningsInr || 0;
-            } else if (net.isMaxBounty) {
-                stats.maxbounty.cost += c.cost || 0;
-                stats.maxbounty.revenueInr += c.maxBountyEarningsInr || 0;
+            // Use the already-set network flags from enrichment
+            // Convert values to Numbers in case they are Decimals from backend
+            const costNum = Number(c.cost) || 0;
+            if (c.isKelkoo) {
+                stats.kelkoo.cost += costNum;
+                stats.kelkoo.revenueInr += Number(c.kelkooRevenueInr) || 0;
+            } else if (c.isAdmedia) {
+                stats.admedia.cost += costNum;
+                stats.admedia.revenueInr += Number(c.admediaEarningsInr) || 0;
+            } else if (c.isMaxBounty) {
+                stats.maxbounty.cost += costNum;
+                stats.maxbounty.revenueInr += Number(c.maxBountyEarningsInr) || 0;
             }
         });
 
@@ -905,18 +919,18 @@ export default function DashboardPage() {
     // Compute totals from live data
     const totals = useMemo(() => {
         const result = {
-            clicks: liveSummary?.clicks.value || 0,
-            impressions: liveSummary?.impressions.value || 0,
-            cost: liveSummary?.cost.value || 0,
-            conversions: liveSummary?.conversions.value || 0,
-            ctr: liveSummary?.ctr.value || 0,
-            avgCpc: liveSummary?.cpc.value || 0,
+            clicks: Number(liveSummary?.clicks.value) || 0,
+            impressions: Number(liveSummary?.impressions.value) || 0,
+            cost: Number(liveSummary?.cost.value) || 0,
+            conversions: Number(liveSummary?.conversions.value) || 0,
+            ctr: Number(liveSummary?.ctr.value) || 0,
+            avgCpc: Number(liveSummary?.cpc.value) || 0,
             totalBudget: 0
         };
         
         // Calculate total budget from campaigns
         liveEnrichedCampaigns.forEach(c => {
-            if (c.budget) result.totalBudget += c.budget;
+            if (c.budget) result.totalBudget += Number(c.budget) || 0;
         });
         
         return result;

@@ -88,18 +88,23 @@ export function DataTable<T extends Record<string, any>>({
 
     const formatValue = (value: any, format?: string): string => {
         if (value == null) return "-";
+        const numValue = Number(value);
         switch (format) {
             case "currency":
-                if (typeof value === "number") {
-                    if (value >= 100000) return `Rs.${safeToFixed(value / 100000, 2)}L`;
-                    if (value >= 1000) return `Rs.${safeToFixed(value / 1000, 2)}K`;
-                    return `Rs.${safeToFixed(value, 2)}`;
+                if (!isNaN(numValue) && isFinite(numValue)) {
+                    if (numValue >= 100000) return `₹${safeToFixed(numValue / 100000, 2)}L`;
+                    if (numValue >= 1000) return `₹${safeToFixed(numValue / 1000, 2)}K`;
+                    return `₹${safeToFixed(numValue, 2)}`;
                 }
                 return String(value);
             case "percent":
-                return typeof value === "number" ? `${safeToFixed(value, 2)}%` : String(value);
+                return !isNaN(numValue) && isFinite(numValue) ? `${safeToFixed(numValue, 2)}%` : String(value);
             case "number":
-                return typeof value === "number" ? value.toLocaleString() : String(value);
+                if (!isNaN(numValue) && isFinite(numValue)) {
+                    // For decimals, format nicely
+                    return Number.isInteger(numValue) ? numValue.toLocaleString() : safeToFixed(numValue, 2);
+                }
+                return String(value);
             case "date":
                 return new Date(value).toLocaleDateString("en-IN");
             default:
