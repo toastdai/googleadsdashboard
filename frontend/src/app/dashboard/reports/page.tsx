@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { TrendingUp, AreaChart, BarChart3, PieChart } from "lucide-react";
 import { MetricsLineChart, MetricsAreaChart, MetricsBarChart, MetricsPieChart, ChartSkeleton } from "@/components/charts";
 import html2canvas from "html2canvas";
-import { dailyTrend, totals, campaigns } from "@/lib/campaign-data";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { transformTimeSeries } from "@/lib/dashboard-utils";
 
 // Available metrics for graph builder
 const allMetrics = [
@@ -53,55 +54,47 @@ const reportTemplates = [
     { id: "conversion", name: "Conversion Funnel", metrics: ["clicks", "conversions", "conversion_value"], chart: "bar" },
 ];
 
-// Get report data from real campaign data
-function getReportData(days: number) {
-    // Use real dailyTrend data, taking the most recent 'days' entries
-    const trendData = dailyTrend.slice(-days);
-
-    // Enrich with calculated metrics from real totals
-    const avgCpc = totals.cost / totals.clicks;
-    const avgCtr = totals.ctr;
-    const avgConvRate = totals.conversions / totals.clicks * 100;
-
-    return trendData.map((day: any) => ({
-        date: day.date,
-        impressions: day.impressions,
-        clicks: day.clicks,
-        cost: day.cost,
-        conversions: day.conversions,
-        ctr: day.ctr,
-        cpc: day.clicks > 0 ? Math.round(day.cost / day.clicks * 100) / 100 : 0,
-        cpa: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
-        roas: day.conversions > 0 ? Math.round((day.conversions * 500) / day.cost * 100) / 100 : 0,
-        conversion_value: Math.round(day.conversions * 500),
-        avg_position: 2.1,
-        search_impression_share: 65,
-        cost_per_conversion: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
-        kelkoo_leads: Math.round(day.conversions * 0.4),
-        kelkoo_revenue: Math.round(day.conversions * 0.4 * 90),
-    }));
-}
-
 export default function ReportsPage() {
     const [selectedMetrics, setSelectedMetrics] = useState(["impressions", "clicks"]);
     const [chartType, setChartType] = useState("line");
-    const [dateRange, setDateRange] = useState("7d");
-    const [data, setData] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [dateRange, setDateRange] = useState("30d");
     const chartRef = useRef<HTMLDivElement>(null);
     const [aggregation, setAggregation] = useState("daily");
     const [showComparison, setShowComparison] = useState(false);
     const [showDataLabels, setShowDataLabels] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
-    useEffect(() => {
-        setIsLoading(true);
-        const days = datePresets.find((p) => p.id === dateRange)?.days || 7;
-        setTimeout(() => {
-            setData(getReportData(days));
-            setIsLoading(false);
-        }, 300);
-    }, [dateRange, selectedMetrics]);
+    // Calculate date range based on selection
+    const dateRangeDates = useMemo(() => {
+        const today = new Date();
+        const days = datePresets.find((p) => p.id === dateRange)?.days || 30;
+        const start = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
+        return {
+            start: start.toISOString().split('T')[0],
+            end: today.toISOString().split('T')[0],
+        };
+    }, [dateRange]);
+
+    // Fetch backend data
+    const { timeSeries, loading: backendLoading } = useDashboardData(dateRangeDates.start, dateRangeDates.end);
+
+    // Transform time series data for charts
+    const data = useMemo(() => {
+        const transformed = transformTimeSeries(timeSeries);
+        // Add derived metrics
+        return transformed.map(day => ({
+            ...day,
+            cpa: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
+            conversion_value: day.conversion_value || 0,
+            avg_position: 2.1, // Not available from backend
+            search_impression_share: 65, // Not available from backend
+            cost_per_conversion: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
+            kelkoo_leads: Math.round(day.conversions * 0.4), // Estimated until we integrate partner time series
+            kelkoo_revenue: Math.round(day.conversions * 0.4 * 90), // Estimated until we integrate partner time series
+        }));
+    }, [timeSeries]);
+
+    const isLoading = backendLoading;
 
     const toggleMetric = (metricKey: string) => {
         setSelectedMetrics((prev) => {
@@ -125,7 +118,7 @@ export default function ReportsPage() {
     const exportCSV = () => {
         const headers = ["date", ...selectedMetrics].join(",");
         const rows = data.map((row) =>
-            ["date", ...selectedMetrics].map((key) => row[key]).join(",")
+            ["date", ...selectedMetrics].map((key) => row[key as keyof typeof row]).join(",")
         );
         const csv = [headers, ...rows].join("\n");
         const blob = new Blob([csv], { type: "text/csv" });
@@ -140,7 +133,7 @@ export default function ReportsPage() {
     // Prepare pie chart data
     const pieData = selectedMetrics.slice(0, 4).map((key) => ({
         name: allMetrics.find((m) => m.key === key)?.name || key,
-        value: data.reduce((sum, row) => sum + (row[key] || 0), 0),
+        value: data.reduce((sum, row) => sum + ((row as any)[key] || 0), 0),
     }));
 
     const activeMetrics = allMetrics.filter((m) => selectedMetrics.includes(m.key));
@@ -358,11 +351,14 @@ export default function ReportsPage() {
                             {data.slice(0, 10).map((row, i) => (
                                 <tr key={i}>
                                     <td>{row.date}</td>
-                                    {activeMetrics.map((m) => (
-                                        <td key={m.key} className="text-right tabular-nums">
-                                            {typeof row[m.key] === "number" ? row[m.key].toLocaleString() : row[m.key]}
-                                        </td>
-                                    ))}
+                                    {activeMetrics.map((m) => {
+                                        const val = (row as any)[m.key];
+                                        return (
+                                            <td key={m.key} className="text-right tabular-nums">
+                                                {typeof val === "number" ? val.toLocaleString() : val}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
