@@ -58,6 +58,7 @@ function parseTsvResponse(tsv: string): KelkooMetrics | null {
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const today = new Date().toISOString().split("T")[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
     const startDate = searchParams.get("start") || today;
     const endDate = searchParams.get("end") || today;
 
@@ -74,8 +75,9 @@ export async function GET(request: Request) {
         );
     }
 
-    try {
-        const url = `${KELKOO_API_BASE}/aggregated?start=${startDate}&end=${endDate}`;
+    // Helper to fetch Kelkoo data for given dates
+    const fetchKelkooData = async (start: string, end: string) => {
+        const url = `${KELKOO_API_BASE}/aggregated?start=${start}&end=${end}`;
         const response = await fetch(url, {
             headers: {
                 "Authorization": `Bearer ${token}`,
@@ -87,13 +89,33 @@ export async function GET(request: Request) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            return NextResponse.json(
-                { success: false, error: `API Error: ${response.status} - ${errorText}` },
-                { status: response.status }
-            );
+            throw new Error(`API Error: ${response.status} - ${errorText}`);
         }
 
-        const text = await response.text();
+        return await response.text();
+    };
+
+    try {
+        let text: string;
+        let isFallback = false;
+
+        try {
+            // First try with requested dates
+            text = await fetchKelkooData(startDate, endDate);
+        } catch (primaryError) {
+            // If today's data is not available, fallback to yesterday
+            if (String(primaryError).includes("not yet available") && startDate === today) {
+                try {
+                    text = await fetchKelkooData(yesterday, yesterday);
+                    isFallback = true;
+                } catch (fallbackError) {
+                    throw primaryError; // If fallback fails too, throw original error
+                }
+            } else {
+                throw primaryError;
+            }
+        }
+
         const data = parseTsvResponse(text);
 
         if (!data) {
@@ -103,10 +125,10 @@ export async function GET(request: Request) {
             );
         }
 
-        return NextResponse.json({ success: true, data, isFallback: false });
+        return NextResponse.json({ success: true, data, isFallback });
     } catch (error) {
         return NextResponse.json(
-            { success: false, error: `Fetch error: ${error}` },
+            { success: false, error: `${error}` },
             { status: 500 }
         );
     }

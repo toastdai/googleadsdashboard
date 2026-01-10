@@ -29,7 +29,7 @@ services:
       - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
         sync: false
       - key: FRONTEND_URL
-        value: "https://frontend-mu-lake.vercel.app"
+        value: "https://googleadsdashboard-beta.vercel.app"
       # Telegram Bot Configuration (for FREE spike alerts)
       - key: TELEGRAM_BOT_TOKEN
         sync: false

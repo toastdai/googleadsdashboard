@@ -318,34 +318,40 @@ _Update via Render env vars_
         metrics_display = []
         
         try:
-            kelkoo = await detector._fetch_kelkoo_data()
+            kelkoo = await detector.fetch_kelkoo_data()
             if kelkoo:
                 metrics_display.append(f"""
 *Kelkoo (Today):*
-  Leads: {self._format_number(kelkoo.get('leads'))}
-  Revenue: EUR {self._format_number(kelkoo.get('revenue_eur'))}""")
+  Leads: {self._format_number(kelkoo.get('leadCount', 0))}
+  Revenue: EUR {self._format_number(kelkoo.get('leadEstimatedRevenueInEur', 0))}""")
+            else:
+                metrics_display.append("*Kelkoo:* No data or API not configured")
         except Exception as e:
-            metrics_display.append(f"*Kelkoo:* Error fetching - {str(e)[:30]}")
+            metrics_display.append(f"*Kelkoo:* Error - {str(e)[:40]}")
         
         try:
-            admedia = await detector._fetch_admedia_data()
+            admedia = await detector.fetch_admedia_data()
             if admedia:
                 metrics_display.append(f"""
 *Admedia (Today):*
-  Leads: {self._format_number(admedia.get('leads'))}
-  Earnings: USD {self._format_number(admedia.get('earnings_usd'))}""")
+  Leads: {self._format_number(admedia.get('leads', 0))}
+  Earnings: USD {self._format_number(admedia.get('earnings', 0))}""")
+            else:
+                metrics_display.append("*Admedia:* No data or API not configured")
         except Exception as e:
-            metrics_display.append(f"*Admedia:* Error fetching - {str(e)[:30]}")
+            metrics_display.append(f"*Admedia:* Error - {str(e)[:40]}")
         
         try:
-            maxbounty = await detector._fetch_maxbounty_data()
+            maxbounty = await detector.fetch_maxbounty_data()
             if maxbounty:
                 metrics_display.append(f"""
 *MaxBounty (Today):*
-  Leads: {self._format_number(maxbounty.get('leads'))}
-  Earnings: USD {self._format_number(maxbounty.get('earnings_usd'))}""")
+  Leads: {self._format_number(maxbounty.get('leads', 0))}
+  Earnings: USD {self._format_number(maxbounty.get('earnings', 0))}""")
+            else:
+                metrics_display.append("*MaxBounty:* No data or API not configured")
         except Exception as e:
-            metrics_display.append(f"*MaxBounty:* Error fetching - {str(e)[:30]}")
+            metrics_display.append(f"*MaxBounty:* Error - {str(e)[:40]}")
         
         keyboard = self._create_inline_keyboard([
             [
@@ -374,22 +380,22 @@ _Fetched: {datetime.now().strftime('%H:%M:%S')}_
         
         # Check each network
         try:
-            kelkoo = await detector._fetch_kelkoo_data()
-            k_status = "ONLINE" if kelkoo else "OFFLINE"
+            kelkoo = await detector.fetch_kelkoo_data()
+            k_status = "ONLINE" if kelkoo else "NOT CONFIGURED"
         except:
             k_status = "ERROR"
         network_status.append(f"  Kelkoo    [{k_status}]")
         
         try:
-            admedia = await detector._fetch_admedia_data()
-            a_status = "ONLINE" if admedia else "OFFLINE"
+            admedia = await detector.fetch_admedia_data()
+            a_status = "ONLINE" if admedia else "NOT CONFIGURED"
         except:
             a_status = "ERROR"
         network_status.append(f"  Admedia   [{a_status}]")
         
         try:
-            maxbounty = await detector._fetch_maxbounty_data()
-            m_status = "ONLINE" if maxbounty else "OFFLINE"
+            maxbounty = await detector.fetch_maxbounty_data()
+            m_status = "ONLINE" if maxbounty else "NOT CONFIGURED"
         except:
             m_status = "ERROR"
         network_status.append(f"  MaxBounty [{m_status}]")
