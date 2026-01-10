@@ -2,7 +2,8 @@
  * API Client for TellSpike Backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+// Default to deployed backend when env var missing (production safety)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://googleads-dashboard-backend.onrender.com/api";
 
 interface ApiError {
     detail: string;
