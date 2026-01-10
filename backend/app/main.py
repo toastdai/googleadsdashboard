@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.mongodb import init_mongodb, close_mongodb, MONGODB_CONFIGURED
-from app.api import auth, accounts, dashboard, campaigns, metrics, alerts, reports, notifications, sync
+from app.api import auth, accounts, dashboard, campaigns, metrics, alerts, reports, notifications, sync, admin
 from app.api.alerts_telegram import router as alerts_telegram_router
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.services.auto_sync import start_auto_sync_scheduler, stop_auto_sync_scheduler
@@ -96,6 +96,7 @@ app.include_router(alerts_telegram_router, tags=["Telegram Alerts"])  # Routes: 
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(sync.router, prefix="/api", tags=["Sync"])
+app.include_router(admin.router, prefix="/api", tags=["Admin"])  # Admin endpoints
 
 
 @app.get("/", tags=["Health"])
