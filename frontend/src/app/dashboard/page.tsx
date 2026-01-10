@@ -1715,7 +1715,7 @@ export default function DashboardPage() {
                 />
                 <EnhancedKPICard
                     title="CPA"
-                    value={liveSummary ? `Rs.${liveSummary.cpa.value.toFixed(0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
+                    value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpa.value, 0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
                     subtitle="Per conversion"
                     trend={liveSummary?.cpa.change_percent ? `${safeToFixed(liveSummary.cpa.change_percent, 1)}%` : "-3.5%"}
                     trendUp={liveSummary?.cpa.change_direction === "down"}
