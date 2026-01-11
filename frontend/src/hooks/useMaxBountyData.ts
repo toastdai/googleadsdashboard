@@ -79,10 +79,27 @@ export function useMaxBountyData(
             setCampaigns(result.data?.campaigns || []);
             setIsFallback(Boolean(result.isFallback));
         } catch (err) {
-            setData(null);
+            // Set default empty data instead of null to prevent rendering errors
+            setData({
+                clicks: 0,
+                leads: 0,
+                earnings: 0,
+                earningsInr: 0,
+                conversion: 0,
+                epc: 0,
+                sales: 0,
+                campaigns: []
+            });
             setCampaigns([]);
             setIsFallback(false);
-            setError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            // Only show error if it's not a simple "no data" scenario
+            if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
+                setError('Authentication required');
+            } else if (!errorMessage.includes('No data') && !errorMessage.includes('empty')) {
+                setError(errorMessage.length > 50 ? errorMessage.substring(0, 50) + '...' : errorMessage);
+            }
+            console.error('MaxBounty fetch error:', err);
         } finally {
             setLoading(false);
         }

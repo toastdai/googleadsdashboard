@@ -170,15 +170,21 @@ export function useDashboardData(startDate: string, endDate: string) {
                 const summaryData = await summaryRes.json();
                 
                 // Check if database has data (cost > 0 indicates data exists)
-                const hasData = parseFloat(summaryData.cost?.value || '0') > 0 || 
-                               parseInt(summaryData.clicks?.value || '0') > 0 ||
-                               parseInt(summaryData.impressions?.value || '0') > 0;
+                const costValue = parseFloat(summaryData.cost?.value || '0');
+                const clicksValue = parseInt(summaryData.clicks?.value || '0', 10);
+                const impressionsValue = parseInt(summaryData.impressions?.value || '0', 10);
+                const hasData = costValue > 0 || clicksValue > 0 || impressionsValue > 0;
+                
+                console.log('Database check:', { costValue, clicksValue, impressionsValue, hasData });
                 
                 if (!hasData) {
                     console.log('No data in database for this range, fetching live from Google Ads API...');
+                    // Set summary with zeros first
+                    setSummary(summaryData);
                     setLoading(false);
                     // Automatically fetch live data
-                    await fetchLiveData();
+                    const liveResult = await fetchLiveData();
+                    console.log('Live fetch result:', liveResult);
                     return;
                 }
                 

@@ -1420,19 +1420,22 @@ export default function DashboardPage() {
                             <AlertTriangle className="w-5 h-5 text-amber-400" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available</h3>
+                            <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available for Selected Period</h3>
                             <p className="text-xs text-gray-400">
-                                No Google Ads data available for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
-                                This could be due to: no campaigns running, API access issues, or the date range having no activity.
-                                Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
+                                No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                                Data is available from Dec 10, 2025 onwards. Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
                             </p>
                         </div>
                         <button
-                            onClick={() => refetchLive()}
-                            className="px-4 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 text-sm font-medium transition-colors flex items-center gap-2"
+                            onClick={() => {
+                                console.log('Manual refetch triggered for:', dateRange);
+                                refetchLive();
+                            }}
+                            disabled={isFetchingLive}
+                            className="px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-400 text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
                         >
-                            <RefreshCw className="w-4 h-4" />
-                            Retry Fetch
+                            <RefreshCw className={`w-4 h-4 ${isFetchingLive ? 'animate-spin' : ''}`} />
+                            {isFetchingLive ? 'Fetching...' : 'Fetch Live Data'}
                         </button>
                     </div>
                 </div>
@@ -1750,7 +1753,7 @@ export default function DashboardPage() {
                         >
                             <RefreshCw className={`w-4 h-4 text-rose-400 ${maxBountyLoading ? 'animate-spin' : ''}`} />
                         </button>
-                        {maxBountyError && <span className="text-xs text-red-400">{maxBountyError}</span>}
+                        {maxBountyError && <span className="text-xs text-red-400" title={maxBountyError}>Network error</span>}
                     </div>
                     <div
                         className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-rose-900/10 rounded-lg p-2 -m-2 transition-colors"
