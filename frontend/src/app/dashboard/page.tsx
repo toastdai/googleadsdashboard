@@ -1357,6 +1357,24 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Google Ads Data Availability Notice */}
+            {!liveLoading && liveEnrichedCampaigns.length === 0 && (
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/30 via-gray-900 to-orange-900/30 p-4 border border-amber-500/30">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available for Selected Period</h3>
+                            <p className="text-xs text-gray-400">
+                                No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                                Data is available from Dec 10, 2025 onwards. Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Quick Stats Bar */}
             <QuickStatsBar campaigns={liveEnrichedCampaigns as any[]} />
 

@@ -313,7 +313,7 @@ export default function CampaignsPage() {
                 <div>
                     <h1 className="text-2xl font-display font-bold">Campaigns</h1>
                     <p className="text-muted-foreground mt-1">
-                        {backendCampaigns.length > 0 ? `${backendCampaigns.length} campaigns from Google Ads` : "Loading campaigns..."}
+                        {backendCampaigns.length > 0 ? `${backendCampaigns.length} campaigns from Google Ads` : backendLoading ? "Loading campaigns..." : "No Google Ads data for selected period"}
                         {(kelkooLoading || admediaLoading || maxBountyLoading) && 
                             <span className="ml-2 text-cyan-400">(Loading partner data...)</span>
                         }
@@ -334,6 +334,21 @@ export default function CampaignsPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Google Ads Data Warning */}
+            {!backendLoading && backendCampaigns.length === 0 && (
+                <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                            <p className="text-amber-400 font-medium text-sm">No Google Ads Data for Selected Period</p>
+                            <p className="text-gray-400 text-xs mt-1">Google Ads data is available from Dec 10, 2025 onwards. Try selecting a more recent date range. Partner data (Kelkoo, Admedia, MaxBounty) may still be available.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Quick Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
