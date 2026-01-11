@@ -5,9 +5,8 @@ Trigger Google Ads data sync manually.
 """
 
 from datetime import date, timedelta
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -21,6 +20,101 @@ from app.config import settings
 
 
 router = APIRouter()
+
+
+async def cache_live_data_to_db(
+    start_date: str,
+    end_date: str,
+    all_campaigns: dict,
+    daily_totals: dict,
+    child_accounts: list,
+    refresh_token: str
+):
+    """
+    Background task to cache live-fetched Google Ads data into the database.
+    This enables faster subsequent loads for the same date range.
+    """
+    from app.database import async_session_maker
+    from app.models.campaign import Campaign
+    from app.models.metrics import DailyMetric
+    from decimal import Decimal
+    from datetime import datetime
+    
+    try:
+        async with async_session_maker() as db:
+            # Get the first active account to link data
+            result = await db.execute(
+                select(GoogleAdsAccount)
+                .where(GoogleAdsAccount.is_active == True)
+                .limit(1)
+            )
+            account = result.scalar_one_or_none()
+            
+            if not account:
+                print("CACHE: No active account found, skipping cache")
+                return
+            
+            # Cache campaigns and their metrics
+            for campaign_id, camp_data in all_campaigns.items():
+                # Check if campaign exists
+                result = await db.execute(
+                    select(Campaign)
+                    .where(Campaign.google_campaign_id == str(campaign_id))
+                    .limit(1)
+                )
+                campaign = result.scalar_one_or_none()
+                
+                if not campaign:
+                    # Create campaign
+                    campaign = Campaign(
+                        google_campaign_id=str(campaign_id),
+                        account_id=account.id,
+                        name=camp_data["name"],
+                        status="ENABLED",
+                        campaign_type="UNKNOWN"
+                    )
+                    db.add(campaign)
+                    await db.flush()
+            
+            # Cache daily metrics
+            for date_str, day_data in daily_totals.items():
+                metric_date = datetime.strptime(date_str, "%Y-%m-%d").date() if isinstance(date_str, str) else date_str
+                
+                # Check if metric exists for this date (at account level)
+                result = await db.execute(
+                    select(DailyMetric)
+                    .where(DailyMetric.account_id == account.id)
+                    .where(DailyMetric.date == metric_date)
+                    .where(DailyMetric.campaign_id == None)
+                    .limit(1)
+                )
+                metric = result.scalar_one_or_none()
+                
+                if not metric:
+                    metric = DailyMetric(
+                        account_id=account.id,
+                        campaign_id=None,  # Account-level aggregate
+                        date=metric_date,
+                        impressions=day_data["impressions"],
+                        clicks=day_data["clicks"],
+                        cost_micros=int(day_data["cost"] * 1000000),  # Convert to micros
+                        conversions=Decimal(str(day_data["conversions"]))
+                    )
+                    db.add(metric)
+                else:
+                    # Update existing metric
+                    metric.impressions = day_data["impressions"]
+                    metric.clicks = day_data["clicks"]
+                    metric.cost_micros = int(day_data["cost"] * 1000000)
+                    metric.conversions = Decimal(str(day_data["conversions"]))
+            
+            await db.commit()
+            print(f"CACHE: Successfully cached data for {start_date} to {end_date} ({len(all_campaigns)} campaigns, {len(daily_totals)} days)")
+            
+    except Exception as e:
+        print(f"CACHE ERROR: Failed to cache live data: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 
 @router.post("/sync/trigger")
@@ -138,12 +232,15 @@ async def trigger_manual_sync(
 async def fetch_live_data(
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
+    cache: bool = Query(default=True, description="Cache fetched data in database"),
+    background_tasks: BackgroundTasks = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Fetch Google Ads data LIVE from API for any date range.
     This endpoint fetches directly from Google Ads API without requiring authentication.
     Used for on-demand historical data fetching.
+    Data is automatically cached in the database for faster subsequent loads.
     """
     from decimal import Decimal
     
@@ -313,9 +410,10 @@ async def fetch_live_data(
             "conversions": str(d["conversions"])
         } for d in daily_data]
         
-        return {
+        response_data = {
             "success": True,
             "source": "live_api",
+            "cached": False,
             "date_range": {
                 "start": start_date,
                 "end": end_date
@@ -335,6 +433,21 @@ async def fetch_live_data(
             "daily_metrics": formatted_daily,
             "accounts_synced": len(child_accounts)
         }
+        
+        # Cache data in database in background if enabled
+        if cache and background_tasks:
+            background_tasks.add_task(
+                cache_live_data_to_db,
+                start_date,
+                end_date,
+                all_campaigns,
+                daily_totals,
+                child_accounts,
+                refresh_token
+            )
+            response_data["cached"] = True
+        
+        return response_data
         
     except HTTPException:
         raise

@@ -8,6 +8,7 @@ import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmedia
 import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
 import { useDashboardData, BreakdownItem } from "@/hooks/useDashboardData";
 import { DateRangePicker } from "@/components/date-range-picker";
+import { useDateRange } from "@/lib/date-context";
 import {
     RefreshCw,
     Download,
@@ -612,37 +613,9 @@ const ROASIcon = () => (
     </svg>
 );
 
-// Helper to format date range for display
-const formatDateRangeLabel = (startDate: string, endDate: string): string => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
-    const endMonth = end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    
-    if (startMonth === endMonth.split(' ')[0]) {
-        // Same month
-        return `${startMonth} ${start.getDate()}-${end.getDate()}, ${end.getFullYear()}`;
-    }
-    return `${startMonth} ${start.getDate()} - ${endMonth.split(' ')[0]} ${end.getDate()}, ${end.getFullYear()}`;
-};
-
 export default function DashboardPage() {
-    // Date State - Default to Last 30 Days (like Google Ads)
-    const today = new Date();
-    today.setDate(today.getDate() - 1); // Yesterday as end date
-    const endDate = today.toISOString().split("T")[0];
-    
-    const startDay = new Date(today);
-    startDay.setDate(startDay.getDate() - 29); // 30 days total
-    const startDate = startDay.toISOString().split("T")[0];
-
-    const [dateRange, setDateRange] = useState({
-        start: startDate, // Default to last 30 days
-        end: endDate
-    });
-
-    // Dynamic date label for partner sections
-    const dateRangeLabel = useMemo(() => formatDateRangeLabel(dateRange.start, dateRange.end), [dateRange]);
+    // Global Date State from Context (shared across all dashboard pages)
+    const { dateRange, setDateRange, dateRangeLabel } = useDateRange();
 
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
     const [selectedMetric, setSelectedMetric] = useState<"clicks" | "cost" | "conversions">("clicks");

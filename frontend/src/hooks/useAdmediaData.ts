@@ -1,11 +1,13 @@
 /**
  * useAdmediaData Hook
  * Fetches Admedia data from the API and provides loading/error states
+ * Includes caching to prevent redundant fetches
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { dataCache, CacheKeys } from "@/lib/cache";
 
 export interface AdmediaData {
     clicks: number;
@@ -38,6 +40,12 @@ interface UseAdmediaDataResult {
 
 const USD_TO_INR = 85;
 
+interface CachedAdmediaResult {
+    data: AdmediaData;
+    campaigns: AdmediaCampaignData[];
+    isFallback: boolean;
+}
+
 export function useAdmediaData(
     startDate: string,
     endDate: string
@@ -47,6 +55,7 @@ export function useAdmediaData(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isFallback, setIsFallback] = useState(false);
+    const lastFetchKey = useRef<string>("");
 
     const applyResult = useCallback((result: any) => {
         if (!(result?.success && result.data)) {
@@ -58,7 +67,22 @@ export function useAdmediaData(
         setIsFallback(Boolean(result.isFallback));
     }, []);
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (forceRefresh = false) => {
+        const cacheKey = CacheKeys.admedia(startDate, endDate);
+        
+        // Check cache first (unless forced refresh)
+        if (!forceRefresh) {
+            const cached = dataCache.get<CachedAdmediaResult>(cacheKey);
+            if (cached) {
+                console.log('[useAdmediaData] Using cached data');
+                setData(cached.data);
+                setCampaigns(cached.campaigns);
+                setIsFallback(cached.isFallback);
+                setLoading(false);
+                return;
+            }
+        }
+        
         setLoading(true);
         setError(null);
 
@@ -74,6 +98,15 @@ export function useAdmediaData(
 
             const result = await response.json();
             applyResult(result);
+            
+            // Cache the result
+            if (result?.success && result.data) {
+                dataCache.set(cacheKey, {
+                    data: result.data,
+                    campaigns: result.campaigns || [],
+                    isFallback: Boolean(result.isFallback)
+                });
+            }
         } catch (err) {
             setData(null);
             setCampaigns([]);
@@ -82,14 +115,19 @@ export function useAdmediaData(
         } finally {
             setLoading(false);
         }
-    }, [startDate, endDate]);
+    }, [startDate, endDate, applyResult]);
 
     useEffect(() => {
+        const fetchKey = `${startDate}:${endDate}`;
+        if (lastFetchKey.current === fetchKey && data) {
+            return;
+        }
+        lastFetchKey.current = fetchKey;
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, startDate, endDate, data]);
 
     const refetch = () => {
-        void fetchData();
+        void fetchData(true); // Force refresh
     };
 
     return { data, campaigns, loading, error, isFallback, refetch };

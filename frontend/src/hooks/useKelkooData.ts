@@ -1,9 +1,11 @@
 /**
  * useKelkooData Hook
  * Fetches Kelkoo data from the API and provides loading/error states
+ * Includes caching to prevent redundant fetches
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { dataCache, CacheKeys } from "@/lib/cache";
 
 export interface KelkooData {
     clickCount: number;
@@ -37,8 +39,23 @@ export function useKelkooData(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isFallback, setIsFallback] = useState(false);
+    const lastFetchKey = useRef<string>("");
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (forceRefresh = false) => {
+        const cacheKey = CacheKeys.kelkoo(startDate, endDate);
+        
+        // Check cache first (unless forced refresh)
+        if (!forceRefresh) {
+            const cached = dataCache.get<{ data: KelkooData; isFallback: boolean }>(cacheKey);
+            if (cached) {
+                console.log('[useKelkooData] Using cached data');
+                setData(cached.data);
+                setIsFallback(cached.isFallback);
+                setLoading(false);
+                return;
+            }
+        }
+        
         setLoading(true);
         setError(null);
 
@@ -51,6 +68,8 @@ export function useKelkooData(
             if (result.success || result.data) {
                 setData(result.data);
                 setIsFallback(result.isFallback || false);
+                // Cache the result
+                dataCache.set(cacheKey, { data: result.data, isFallback: result.isFallback || false });
             } else {
                 setError(result.error || "Failed to fetch Kelkoo data");
             }
@@ -62,11 +81,17 @@ export function useKelkooData(
     }, [startDate, endDate]);
 
     useEffect(() => {
+        const fetchKey = `${startDate}:${endDate}`;
+        if (lastFetchKey.current === fetchKey && data) {
+            // Same date range, already have data
+            return;
+        }
+        lastFetchKey.current = fetchKey;
         void fetchData();
-    }, [fetchData]);
+    }, [fetchData, startDate, endDate, data]);
 
     const refetch = () => {
-        void fetchData();
+        void fetchData(true); // Force refresh
     };
 
     return { data, loading, error, isFallback, refetch };

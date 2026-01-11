@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { DataTable } from "@/components/data-table";
 import { MetricsLineChart, ChartSkeleton } from "@/components/charts";
-import { Campaign, formatCurrency, formatNumber } from "@/lib/campaign-data";
+import { Campaign } from "@/lib/campaign-data";
 import { useKelkooData, calculateCampaignKelkooData } from "@/hooks/useKelkooData";
 import { useAdmediaData, calculateCampaignAdmediaData } from "@/hooks/useAdmediaData";
 import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMaxBountyData";
 import { useDashboardData, BreakdownItem } from "@/hooks/useDashboardData";
+import { useDateRange } from "@/lib/date-context";
 import { calculateHealthScore, calculateEfficiencyRating, calculateRiskLevel } from "@/lib/dashboard-utils";
 
 // Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
@@ -82,11 +83,10 @@ export default function CampaignsPage() {
     const [typeFilter, setTypeFilter] = useState<string>("all");
     const [networkFilter, setNetworkFilter] = useState<string>("all");
 
-    // Date range - default to last 30 days
-    const today = new Date();
-    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
-    const endDate = today.toISOString().split('T')[0];
+    // Global date range from context (shared with dashboard and reports)
+    const { dateRange } = useDateRange();
+    const startDate = dateRange.start;
+    const endDate = dateRange.end;
 
     // Fetch backend campaign data (auto-fetches live if not in DB)
     const { 

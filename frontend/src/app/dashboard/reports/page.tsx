@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { TrendingUp, AreaChart, BarChart3, PieChart } from "lucide-react";
 import { MetricsLineChart, MetricsAreaChart, MetricsBarChart, MetricsPieChart, ChartSkeleton } from "@/components/charts";
 import html2canvas from "html2canvas";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDateRange } from "@/lib/date-context";
 import { transformTimeSeries } from "@/lib/dashboard-utils";
 
 // Available metrics for graph builder
@@ -57,26 +58,17 @@ const reportTemplates = [
 export default function ReportsPage() {
     const [selectedMetrics, setSelectedMetrics] = useState(["impressions", "clicks"]);
     const [chartType, setChartType] = useState("line");
-    const [dateRange, setDateRange] = useState("30d");
     const chartRef = useRef<HTMLDivElement>(null);
     const [aggregation, setAggregation] = useState("daily");
     const [showComparison, setShowComparison] = useState(false);
     const [showDataLabels, setShowDataLabels] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
-    // Calculate date range based on selection
-    const dateRangeDates = useMemo(() => {
-        const today = new Date();
-        const days = datePresets.find((p) => p.id === dateRange)?.days || 30;
-        const start = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
-        return {
-            start: start.toISOString().split('T')[0],
-            end: today.toISOString().split('T')[0],
-        };
-    }, [dateRange]);
+    // Global date range from context (shared with dashboard and campaigns)
+    const { dateRange: globalDateRange, preset, applyPreset } = useDateRange();
 
-    // Fetch backend data
-    const { timeSeries, loading: backendLoading, isFetchingLive, dataSource } = useDashboardData(dateRangeDates.start, dateRangeDates.end);
+    // Fetch backend data using global date range
+    const { timeSeries, loading: backendLoading, isFetchingLive, dataSource } = useDashboardData(globalDateRange.start, globalDateRange.end);
 
     // Transform time series data for charts
     const data = useMemo(() => {
@@ -311,16 +303,16 @@ export default function ReportsPage() {
                 <div>
                     <label className="block text-sm font-medium mb-3">Date Range</label>
                     <div className="flex flex-wrap gap-2">
-                        {datePresets.map((preset) => (
+                        {datePresets.map((presetItem) => (
                             <button
-                                key={preset.id}
-                                onClick={() => setDateRange(preset.id)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${dateRange === preset.id
+                                key={presetItem.id}
+                                onClick={() => applyPreset(presetItem.id as any)}
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${preset === presetItem.id
                                     ? "bg-primary-500 text-white"
                                     : "bg-muted hover:bg-muted/80"
                                     }`}
                             >
-                                {preset.name}
+                                {presetItem.name}
                             </button>
                         ))}
                     </div>

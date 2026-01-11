@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, LiveDataResponse } from '@/lib/api';
+import { dataCache, CacheKeys } from '@/lib/cache';
 
 // Types mirroring backend schemas
 export interface DashboardSummary {
@@ -54,67 +55,46 @@ export function useDashboardData(startDate: string, endDate: string) {
     const [isFetchingLive, setIsFetchingLive] = useState(false);
     const [liveData, setLiveData] = useState<LiveDataResponse | null>(null);
     const [dataSource, setDataSource] = useState<'database' | 'live' | 'none'>('none');
+    
+    // Track current fetch to prevent duplicate requests
+    const fetchIdRef = useRef(0);
+    const lastFetchKey = useRef<string>('');
 
     // Function to fetch live data from Google Ads API
-    const fetchLiveData = useCallback(async () => {
+    const fetchLiveData = useCallback(async (forceRefresh = false) => {
         if (!startDate || !endDate) return null;
+        
+        const cacheKey = CacheKeys.liveData(startDate, endDate);
+        
+        // Check cache first (unless forced refresh)
+        if (!forceRefresh) {
+            const cached = dataCache.get<LiveDataResponse>(cacheKey);
+            if (cached) {
+                console.log('[useDashboardData] Using cached live data');
+                setLiveData(cached);
+                setDataSource('live');
+                
+                // Populate state from cached data
+                if (cached.success) {
+                    populateFromLiveData(cached);
+                }
+                return cached;
+            }
+        }
         
         setIsFetchingLive(true);
         try {
             const data = await api.fetchLiveData({ start: startDate, end: endDate });
+            
+            // Cache the result
+            dataCache.set(cacheKey, data);
+            
             setLiveData(data);
             setDataSource('live');
             
             // Convert live data to dashboard format
             if (data.success) {
-                const liveSummary: DashboardSummary = {
-                    impressions: { value: data.summary.impressions, change_direction: 'flat' },
-                    clicks: { value: data.summary.clicks, change_direction: 'flat' },
-                    cost: { value: parseFloat(data.summary.cost), change_direction: 'flat' },
-                    conversions: { value: parseFloat(data.summary.conversions), change_direction: 'flat' },
-                    conversion_value: { value: parseFloat(data.summary.conversion_value), change_direction: 'flat' },
-                    ctr: { value: parseFloat(data.summary.ctr), change_direction: 'flat' },
-                    cpc: { value: parseFloat(data.summary.cpc), change_direction: 'flat' },
-                    cpa: { value: parseFloat(data.summary.cpa), change_direction: 'flat' },
-                    roas: { value: parseFloat(data.summary.roas), change_direction: 'flat' },
-                    summary_text: `Live data: You spent ₹${parseFloat(data.summary.cost).toLocaleString()} and generated ${parseFloat(data.summary.conversions).toFixed(0)} conversions.`
-                };
-                setSummary(liveSummary);
-                
-                // Convert campaigns
-                const liveCampaigns: BreakdownItem[] = data.campaigns.map(c => ({
-                    id: c.google_campaign_id,
-                    name: c.name,
-                    impressions: c.impressions,
-                    clicks: c.clicks,
-                    cost: parseFloat(c.cost),
-                    conversions: parseFloat(c.conversions),
-                    conversion_value: parseFloat(c.conversion_value),
-                    ctr: parseFloat(c.ctr),
-                    cpc: parseFloat(c.cpc),
-                    share_of_total: 0
-                }));
-                
-                // Calculate share of total
-                const totalCost = liveCampaigns.reduce((sum, c) => sum + c.cost, 0);
-                liveCampaigns.forEach(c => {
-                    c.share_of_total = totalCost > 0 ? (c.cost / totalCost) * 100 : 0;
-                });
-                
-                setTopCampaigns(liveCampaigns);
-                
-                // Convert daily metrics to time series
-                const impressionsData = data.daily_metrics.map(d => ({ date: d.date, value: d.impressions }));
-                const clicksData = data.daily_metrics.map(d => ({ date: d.date, value: d.clicks }));
-                const costData = data.daily_metrics.map(d => ({ date: d.date, value: parseFloat(d.cost) }));
-                const conversionsData = data.daily_metrics.map(d => ({ date: d.date, value: parseFloat(d.conversions) }));
-                
-                setTimeSeries([
-                    { metric: 'impressions', data: impressionsData, total: data.summary.impressions, average: data.summary.impressions / Math.max(data.daily_metrics.length, 1) },
-                    { metric: 'clicks', data: clicksData, total: data.summary.clicks, average: data.summary.clicks / Math.max(data.daily_metrics.length, 1) },
-                    { metric: 'cost', data: costData, total: parseFloat(data.summary.cost), average: parseFloat(data.summary.cost) / Math.max(data.daily_metrics.length, 1) },
-                    { metric: 'conversions', data: conversionsData, total: parseFloat(data.summary.conversions), average: parseFloat(data.summary.conversions) / Math.max(data.daily_metrics.length, 1) }
-                ]);
+                populateFromLiveData(data);
             }
             
             return data;
@@ -126,13 +106,80 @@ export function useDashboardData(startDate: string, endDate: string) {
             setIsFetchingLive(false);
         }
     }, [startDate, endDate]);
+    
+    // Helper to populate state from live data
+    const populateFromLiveData = useCallback((data: LiveDataResponse) => {
+        const liveSummary: DashboardSummary = {
+            impressions: { value: data.summary.impressions, change_direction: 'flat' },
+            clicks: { value: data.summary.clicks, change_direction: 'flat' },
+            cost: { value: parseFloat(data.summary.cost), change_direction: 'flat' },
+            conversions: { value: parseFloat(data.summary.conversions), change_direction: 'flat' },
+            conversion_value: { value: parseFloat(data.summary.conversion_value), change_direction: 'flat' },
+            ctr: { value: parseFloat(data.summary.ctr), change_direction: 'flat' },
+            cpc: { value: parseFloat(data.summary.cpc), change_direction: 'flat' },
+            cpa: { value: parseFloat(data.summary.cpa), change_direction: 'flat' },
+            roas: { value: parseFloat(data.summary.roas), change_direction: 'flat' },
+            summary_text: `Live data: You spent ₹${parseFloat(data.summary.cost).toLocaleString()} and generated ${parseFloat(data.summary.conversions).toFixed(0)} conversions.`
+        };
+        setSummary(liveSummary);
+        
+        // Convert campaigns
+        const liveCampaigns: BreakdownItem[] = data.campaigns.map(c => ({
+            id: c.google_campaign_id,
+            name: c.name,
+            impressions: c.impressions,
+            clicks: c.clicks,
+            cost: parseFloat(c.cost),
+            conversions: parseFloat(c.conversions),
+            conversion_value: parseFloat(c.conversion_value),
+            ctr: parseFloat(c.ctr),
+            cpc: parseFloat(c.cpc),
+            share_of_total: 0
+        }));
+        
+        // Calculate share of total
+        const totalCost = liveCampaigns.reduce((sum, c) => sum + c.cost, 0);
+        liveCampaigns.forEach(c => {
+            c.share_of_total = totalCost > 0 ? (c.cost / totalCost) * 100 : 0;
+        });
+        
+        setTopCampaigns(liveCampaigns);
+        
+        // Convert daily metrics to time series
+        const impressionsData = data.daily_metrics.map(d => ({ date: d.date, value: d.impressions }));
+        const clicksData = data.daily_metrics.map(d => ({ date: d.date, value: d.clicks }));
+        const costData = data.daily_metrics.map(d => ({ date: d.date, value: parseFloat(d.cost) }));
+        const conversionsData = data.daily_metrics.map(d => ({ date: d.date, value: parseFloat(d.conversions) }));
+        
+        setTimeSeries([
+            { metric: 'impressions', data: impressionsData, total: data.summary.impressions, average: data.summary.impressions / Math.max(data.daily_metrics.length, 1) },
+            { metric: 'clicks', data: clicksData, total: data.summary.clicks, average: data.summary.clicks / Math.max(data.daily_metrics.length, 1) },
+            { metric: 'cost', data: costData, total: parseFloat(data.summary.cost), average: parseFloat(data.summary.cost) / Math.max(data.daily_metrics.length, 1) },
+            { metric: 'conversions', data: conversionsData, total: parseFloat(data.summary.conversions), average: parseFloat(data.summary.conversions) / Math.max(data.daily_metrics.length, 1) }
+        ]);
+    }, []);
 
     useEffect(() => {
+        const fetchKey = `${startDate}:${endDate}`;
+        
+        // Skip if same date range already being fetched
+        if (lastFetchKey.current === fetchKey && (loading || isFetchingLive)) {
+            console.log('[useDashboardData] Skipping duplicate fetch for', fetchKey);
+            return;
+        }
+        
+        // Track this fetch
+        const currentFetchId = ++fetchIdRef.current;
+        lastFetchKey.current = fetchKey;
+        
         const fetchData = async () => {
             setLoading(true);
             setError(null);
             setDataSource('none');
             setLiveData(null);
+            
+            // Abort if a newer fetch started
+            if (currentFetchId !== fetchIdRef.current) return;
 
             try {
                 // Default to deployed backend when env var missing (production safety)
@@ -145,9 +192,15 @@ export function useDashboardData(startDate: string, endDate: string) {
                 };
 
                 const queryParams = `?start_date=${startDate}&end_date=${endDate}`;
+                
+                // Abort if a newer fetch started
+                if (currentFetchId !== fetchIdRef.current) return;
 
                 // 1. Fetch Summary from database
                 const summaryRes = await fetch(`${apiUrl}/dashboard/summary${queryParams}`, { headers });
+                
+                // Abort if a newer fetch started
+                if (currentFetchId !== fetchIdRef.current) return;
                 
                 // Handle authentication errors gracefully
                 if (summaryRes.status === 401) {
@@ -169,11 +222,20 @@ export function useDashboardData(startDate: string, endDate: string) {
                 
                 const summaryData = await summaryRes.json();
                 
+                console.log('[useDashboardData] Database response:', {
+                    cost: summaryData.cost?.value,
+                    clicks: summaryData.clicks?.value,
+                    impressions: summaryData.impressions?.value,
+                    dateRange: { startDate, endDate }
+                });
+                
                 // Check if database has data (cost > 0 indicates data exists)
                 const costValue = parseFloat(summaryData.cost?.value || '0');
                 const clicksValue = parseInt(summaryData.clicks?.value || '0', 10);
                 const impressionsValue = parseInt(summaryData.impressions?.value || '0', 10);
                 const hasData = costValue > 0 || clicksValue > 0 || impressionsValue > 0;
+                
+                console.log('[useDashboardData] Data check:', { costValue, clicksValue, impressionsValue, hasData });
                 
                 console.log('Database check:', { costValue, clicksValue, impressionsValue, hasData });
                 

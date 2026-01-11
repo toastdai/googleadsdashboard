@@ -1,11 +1,13 @@
 /**
  * useMaxBountyData Hook
  * Fetches MaxBounty data from the API and provides loading/error states
+ * Includes caching to prevent redundant fetches
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { dataCache, CacheKeys } from "@/lib/cache";
 
 // Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
 const safeToFixed = (value: any, decimals: number = 2): string => {
@@ -45,6 +47,11 @@ interface UseMaxBountyDataResult {
     refetch: () => void;
 }
 
+interface CachedMaxBountyResult {
+    data: MaxBountyData;
+    isFallback: boolean;
+}
+
 export function useMaxBountyData(
     startDate: string,
     endDate: string
@@ -54,8 +61,24 @@ export function useMaxBountyData(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isFallback, setIsFallback] = useState(false);
+    const lastFetchKey = useRef<string>("");
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (forceRefresh = false) => {
+        const cacheKey = CacheKeys.maxbounty(startDate, endDate);
+        
+        // Check cache first (unless forced refresh)
+        if (!forceRefresh) {
+            const cached = dataCache.get<CachedMaxBountyResult>(cacheKey);
+            if (cached) {
+                console.log('[useMaxBountyData] Using cached data');
+                setData(cached.data);
+                setCampaigns(cached.data?.campaigns || []);
+                setIsFallback(cached.isFallback);
+                setLoading(false);
+                return;
+            }
+        }
+        
         setLoading(true);
         setError(null);
 
@@ -78,6 +101,12 @@ export function useMaxBountyData(
             setData(result.data);
             setCampaigns(result.data?.campaigns || []);
             setIsFallback(Boolean(result.isFallback));
+            
+            // Cache the result
+            dataCache.set(cacheKey, {
+                data: result.data,
+                isFallback: Boolean(result.isFallback)
+            });
         } catch (err) {
             // Set default empty data instead of null to prevent rendering errors
             setData({
@@ -106,11 +135,16 @@ export function useMaxBountyData(
     }, [startDate, endDate]);
 
     useEffect(() => {
+        const fetchKey = `${startDate}:${endDate}`;
+        if (lastFetchKey.current === fetchKey && data) {
+            return;
+        }
+        lastFetchKey.current = fetchKey;
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, startDate, endDate, data]);
 
     const refetch = () => {
-        void fetchData();
+        void fetchData(true); // Force refresh
     };
 
     return { data, campaigns, loading, error, isFallback, refetch };
