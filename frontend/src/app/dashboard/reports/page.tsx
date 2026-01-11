@@ -76,7 +76,7 @@ export default function ReportsPage() {
     }, [dateRange]);
 
     // Fetch backend data
-    const { timeSeries, loading: backendLoading } = useDashboardData(dateRangeDates.start, dateRangeDates.end);
+    const { timeSeries, loading: backendLoading, isFetchingLive, dataSource } = useDashboardData(dateRangeDates.start, dateRangeDates.end);
 
     // Transform time series data for charts
     const data = useMemo(() => {
@@ -147,6 +147,12 @@ export default function ReportsPage() {
                     <p className="text-muted-foreground mt-1">
                         Build custom graphs and export your data
                     </p>
+                    {dataSource === 'live' && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 mt-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                            Live from Google Ads API
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={exportPNG} className="btn-secondary">
@@ -164,8 +170,26 @@ export default function ReportsPage() {
                 </div>
             </div>
 
+            {/* Live Data Fetching Indicator */}
+            {isFetchingLive && (
+                <div className="bg-gradient-to-r from-cyan-900/30 via-gray-900 to-purple-900/30 border border-cyan-500/30 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-white font-medium">Fetching Historical Data from Google Ads API...</p>
+                            <p className="text-gray-400 text-xs mt-0.5">No cached data found. Fetching real-time data. This may take 10-30 seconds.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Data Availability Warning */}
-            {!backendLoading && data.length === 0 && (
+            {!backendLoading && !isFetchingLive && data.length === 0 && (
                 <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4">
                     <div className="flex items-start gap-3">
                         <svg className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +197,7 @@ export default function ReportsPage() {
                         </svg>
                         <div>
                             <p className="text-amber-400 font-medium text-sm">No Data Available for Selected Period</p>
-                            <p className="text-gray-400 text-xs mt-1">Google Ads data is available from Dec 10, 2025 onwards. Try selecting &quot;Last 30 days&quot; or a more recent custom range.</p>
+                            <p className="text-gray-400 text-xs mt-1">Could not fetch data for this date range. This might be due to: no campaigns running, API access issues, or no activity.</p>
                         </div>
                     </div>
                 </div>

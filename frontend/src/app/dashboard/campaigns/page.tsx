@@ -88,15 +88,20 @@ export default function CampaignsPage() {
     const startDate = thirtyDaysAgo.toISOString().split('T')[0];
     const endDate = today.toISOString().split('T')[0];
 
-    // Fetch backend campaign data
-    const { topCampaigns: backendCampaigns, loading: backendLoading } = useDashboardData(startDate, endDate);
+    // Fetch backend campaign data (auto-fetches live if not in DB)
+    const { 
+        topCampaigns: backendCampaigns, 
+        loading: backendLoading,
+        isFetchingLive,
+        dataSource 
+    } = useDashboardData(startDate, endDate);
 
     // Fetch partner data
     const { data: kelkooData, loading: kelkooLoading, refetch: refetchKelkoo } = useKelkooData(startDate, endDate);
     const { data: admediaData, loading: admediaLoading, refetch: refetchAdmedia } = useAdmediaData(startDate, endDate);
     const { data: maxBountyData, loading: maxBountyLoading, refetch: refetchMaxBounty } = useMaxBountyData(startDate, endDate);
 
-    const isLoading = backendLoading || kelkooLoading || admediaLoading || maxBountyLoading;
+    const isLoading = backendLoading || isFetchingLive || kelkooLoading || admediaLoading || maxBountyLoading;
 
     // Enrich campaigns with partner data and computed fields
     const enrichedCampaigns: DisplayCampaign[] = useMemo(() => {
@@ -313,11 +318,19 @@ export default function CampaignsPage() {
                 <div>
                     <h1 className="text-2xl font-display font-bold">Campaigns</h1>
                     <p className="text-muted-foreground mt-1">
-                        {backendCampaigns.length > 0 ? `${backendCampaigns.length} campaigns from Google Ads` : backendLoading ? "Loading campaigns..." : "No Google Ads data for selected period"}
+                        {backendCampaigns.length > 0 ? `${backendCampaigns.length} campaigns from Google Ads` : 
+                         isFetchingLive ? "Fetching live data from Google Ads API..." : 
+                         backendLoading ? "Loading campaigns..." : "No Google Ads data for selected period"}
                         {(kelkooLoading || admediaLoading || maxBountyLoading) && 
                             <span className="ml-2 text-cyan-400">(Loading partner data...)</span>
                         }
                     </p>
+                    {dataSource === 'live' && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 mt-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                            Live from Google Ads API
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <button className="btn-secondary text-sm" onClick={handleRefresh}>
@@ -335,16 +348,34 @@ export default function CampaignsPage() {
                 </div>
             </div>
 
+            {/* Live Data Fetching Indicator */}
+            {isFetchingLive && (
+                <div className="bg-gradient-to-r from-cyan-900/30 via-gray-900 to-purple-900/30 border border-cyan-500/30 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-white font-medium">Fetching Historical Data from Google Ads API...</p>
+                            <p className="text-gray-400 text-xs mt-0.5">No cached data found. Fetching real-time data. This may take 10-30 seconds.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Google Ads Data Warning */}
-            {!backendLoading && backendCampaigns.length === 0 && (
+            {!backendLoading && !isFetchingLive && backendCampaigns.length === 0 && (
                 <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4">
                     <div className="flex items-start gap-3">
                         <svg className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                         <div>
-                            <p className="text-amber-400 font-medium text-sm">No Google Ads Data for Selected Period</p>
-                            <p className="text-gray-400 text-xs mt-1">Google Ads data is available from Dec 10, 2025 onwards. Try selecting a more recent date range. Partner data (Kelkoo, Admedia, MaxBounty) may still be available.</p>
+                            <p className="text-amber-400 font-medium text-sm">No Google Ads Data Available</p>
+                            <p className="text-gray-400 text-xs mt-1">Could not fetch data for this date range. This might be due to: no campaigns running, API access issues, or no activity. Partner data (Kelkoo, Admedia, MaxBounty) may still be available.</p>
                         </div>
                     </div>
                 </div>
