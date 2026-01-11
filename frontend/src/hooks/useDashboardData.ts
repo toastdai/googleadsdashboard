@@ -179,12 +179,12 @@ export function useDashboardData(startDate: string, endDate: string) {
                 
                 if (!hasData) {
                     console.log('No data in database for this range, fetching live from Google Ads API...');
-                    // Set summary with zeros first
-                    setSummary(summaryData);
+                    // DON'T set summary to zeros - let fetchLiveData set the real data
+                    // setSummary(summaryData);  // REMOVED - was overwriting live data
                     setLoading(false);
-                    // Automatically fetch live data
+                    // Automatically fetch live data - this will set the summary
                     const liveResult = await fetchLiveData();
-                    console.log('Live fetch result:', liveResult);
+                    console.log('Live fetch completed:', liveResult?.success, 'Campaigns:', liveResult?.campaigns?.length);
                     return;
                 }
                 
