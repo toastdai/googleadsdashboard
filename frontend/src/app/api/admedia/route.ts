@@ -61,8 +61,14 @@ async function fetchXml(url: string) {
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const today = new Date().toISOString().split("T")[0];
-    const startDate = searchParams.get("start") || today;
-    const endDate = searchParams.get("end") || today;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    
+    // Get start/end dates from query params, default to yesterday for safer data availability
+    let startDate = searchParams.get("start") || yesterday;
+    let endDate = searchParams.get("end") || yesterday;
+    
+    // If user requests today's date, use it but be prepared for potential delays in API data
+    // (Admedia typically has same-day data but with some delay)
 
     if (!ADMEDIA_AID || !ADMEDIA_API_KEY) {
         return NextResponse.json(

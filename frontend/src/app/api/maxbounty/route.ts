@@ -64,8 +64,13 @@ let tokenExpiry: number = 0;
 function parseDates(request: Request) {
     const { searchParams } = new URL(request.url);
     const today = new Date().toISOString().split("T")[0];
-    const startDate = searchParams.get("start") || today;
-    const endDate = searchParams.get("end") || today;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    
+    // Default to yesterday for safer data availability
+    let startDate = searchParams.get("start") || yesterday;
+    let endDate = searchParams.get("end") || yesterday;
+    
+    // MaxBounty API typically has same-day data available
     return { startDate, endDate };
 }
 
