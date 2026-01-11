@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
 
 // Date range type
 export interface DateRange {
@@ -21,6 +21,9 @@ interface DateRangeContextValue {
 }
 
 const DateRangeContext = createContext<DateRangeContextValue | undefined>(undefined);
+
+// LocalStorage key
+const STORAGE_KEY = 'dashboard_date_range';
 
 // Helper to format date range as human-readable label
 function formatDateRangeLabel(startDate: string, endDate: string): string {
@@ -55,14 +58,52 @@ function getDefaultDateRange(): DateRange {
     return { start: startDate, end: endDate };
 }
 
+// Load date range from localStorage
+function loadDateRange(): { dateRange: DateRange; preset: DatePreset } | null {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) return null;
+        
+        const parsed = JSON.parse(stored);
+        // Validate the structure
+        if (parsed.dateRange?.start && parsed.dateRange?.end && parsed.preset) {
+            return parsed;
+        }
+    } catch (e) {
+        console.warn('Failed to load date range from localStorage:', e);
+    }
+    return null;
+}
+
+// Save date range to localStorage
+function saveDateRange(dateRange: DateRange, preset: DatePreset) {
+    if (typeof window === 'undefined') return;
+    
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ dateRange, preset }));
+    } catch (e) {
+        console.warn('Failed to save date range to localStorage:', e);
+    }
+}
+
 interface DateRangeProviderProps {
     children: ReactNode;
     initialDateRange?: DateRange;
 }
 
 export function DateRangeProvider({ children, initialDateRange }: DateRangeProviderProps) {
-    const [dateRange, setDateRangeState] = useState<DateRange>(initialDateRange || getDefaultDateRange());
-    const [preset, setPreset] = useState<DatePreset>('30d');
+    // Initialize from localStorage or default
+    const [dateRange, setDateRangeState] = useState<DateRange>(() => {
+        const loaded = loadDateRange();
+        return loaded?.dateRange || initialDateRange || getDefaultDateRange();
+    });
+    
+    const [preset, setPresetState] = useState<DatePreset>(() => {
+        const loaded = loadDateRange();
+        return loaded?.preset || '30d';
+    });
 
     const setDateRange = useCallback((range: DateRange) => {
         setDateRangeState(range);
@@ -77,19 +118,25 @@ export function DateRangeProvider({ children, initialDateRange }: DateRangeProvi
         const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         const endIsToday = end.toDateString() === today.toDateString();
         
+        let detectedPreset: DatePreset = 'custom';
         if (endIsToday) {
-            if (diffDays === 7) setPreset('7d');
-            else if (diffDays === 14) setPreset('14d');
-            else if (diffDays === 30) setPreset('30d');
-            else if (diffDays === 90) setPreset('90d');
-            else setPreset('custom');
-        } else {
-            setPreset('custom');
+            if (diffDays === 7) detectedPreset = '7d';
+            else if (diffDays === 14) detectedPreset = '14d';
+            else if (diffDays === 30) detectedPreset = '30d';
+            else if (diffDays === 90) detectedPreset = '90d';
         }
+        
+        setPresetState(detectedPreset);
+        saveDateRange(range, detectedPreset);
     }, []);
 
+    const setPreset = useCallback((newPreset: DatePreset) => {
+        setPresetState(newPreset);
+        saveDateRange(dateRange, newPreset);
+    }, [dateRange]);
+
     const applyPreset = useCallback((presetId: DatePreset) => {
-        setPreset(presetId);
+        setPresetState(presetId);
         if (presetId === 'custom') return;
         
         const today = new Date();
@@ -112,7 +159,9 @@ export function DateRangeProvider({ children, initialDateRange }: DateRangeProvi
         }
         
         const startDate = startDay.toISOString().split("T")[0];
-        setDateRangeState({ start: startDate, end: endDate });
+        const newRange = { start: startDate, end: endDate };
+        setDateRangeState(newRange);
+        saveDateRange(newRange, presetId);
     }, []);
 
     const dateRangeLabel = useMemo(
