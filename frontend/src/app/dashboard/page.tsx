@@ -1412,8 +1412,8 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Google Ads Data Availability Notice */}
-            {!liveLoading && !isFetchingLive && liveEnrichedCampaigns.length === 0 && (
+            {/* Google Ads Data Availability Notice - Only show when not loading and no campaigns */}
+            {!liveLoading && !isFetchingLive && liveEnrichedCampaigns.length === 0 && dataSource !== 'live' && (
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/30 via-gray-900 to-orange-900/30 p-4 border border-amber-500/30">
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
