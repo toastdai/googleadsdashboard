@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { api, LiveDataResponse } from '@/lib/api';
 
 // Types mirroring backend schemas
 export interface DashboardSummary {
@@ -48,16 +49,95 @@ export function useDashboardData(startDate: string, endDate: string) {
     const [accountBreakdown, setAccountBreakdown] = useState<BreakdownItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // New states for live fetching
+    const [isFetchingLive, setIsFetchingLive] = useState(false);
+    const [liveData, setLiveData] = useState<LiveDataResponse | null>(null);
+    const [dataSource, setDataSource] = useState<'database' | 'live' | 'none'>('none');
+
+    // Function to fetch live data from Google Ads API
+    const fetchLiveData = useCallback(async () => {
+        if (!startDate || !endDate) return null;
+        
+        setIsFetchingLive(true);
+        try {
+            const data = await api.fetchLiveData({ start: startDate, end: endDate });
+            setLiveData(data);
+            setDataSource('live');
+            
+            // Convert live data to dashboard format
+            if (data.success) {
+                const liveSummary: DashboardSummary = {
+                    impressions: { value: data.summary.impressions, change_direction: 'flat' },
+                    clicks: { value: data.summary.clicks, change_direction: 'flat' },
+                    cost: { value: parseFloat(data.summary.cost), change_direction: 'flat' },
+                    conversions: { value: parseFloat(data.summary.conversions), change_direction: 'flat' },
+                    conversion_value: { value: parseFloat(data.summary.conversion_value), change_direction: 'flat' },
+                    ctr: { value: parseFloat(data.summary.ctr), change_direction: 'flat' },
+                    cpc: { value: parseFloat(data.summary.cpc), change_direction: 'flat' },
+                    cpa: { value: parseFloat(data.summary.cpa), change_direction: 'flat' },
+                    roas: { value: parseFloat(data.summary.roas), change_direction: 'flat' },
+                    summary_text: `Live data: You spent ₹${parseFloat(data.summary.cost).toLocaleString()} and generated ${parseFloat(data.summary.conversions).toFixed(0)} conversions.`
+                };
+                setSummary(liveSummary);
+                
+                // Convert campaigns
+                const liveCampaigns: BreakdownItem[] = data.campaigns.map(c => ({
+                    id: c.google_campaign_id,
+                    name: c.name,
+                    impressions: c.impressions,
+                    clicks: c.clicks,
+                    cost: parseFloat(c.cost),
+                    conversions: parseFloat(c.conversions),
+                    conversion_value: parseFloat(c.conversion_value),
+                    ctr: parseFloat(c.ctr),
+                    cpc: parseFloat(c.cpc),
+                    share_of_total: 0
+                }));
+                
+                // Calculate share of total
+                const totalCost = liveCampaigns.reduce((sum, c) => sum + c.cost, 0);
+                liveCampaigns.forEach(c => {
+                    c.share_of_total = totalCost > 0 ? (c.cost / totalCost) * 100 : 0;
+                });
+                
+                setTopCampaigns(liveCampaigns);
+                
+                // Convert daily metrics to time series
+                const impressionsData = data.daily_metrics.map(d => ({ date: d.date, value: d.impressions }));
+                const clicksData = data.daily_metrics.map(d => ({ date: d.date, value: d.clicks }));
+                const costData = data.daily_metrics.map(d => ({ date: d.date, value: parseFloat(d.cost) }));
+                const conversionsData = data.daily_metrics.map(d => ({ date: d.date, value: parseFloat(d.conversions) }));
+                
+                setTimeSeries([
+                    { metric: 'impressions', data: impressionsData, total: data.summary.impressions, average: data.summary.impressions / Math.max(data.daily_metrics.length, 1) },
+                    { metric: 'clicks', data: clicksData, total: data.summary.clicks, average: data.summary.clicks / Math.max(data.daily_metrics.length, 1) },
+                    { metric: 'cost', data: costData, total: parseFloat(data.summary.cost), average: parseFloat(data.summary.cost) / Math.max(data.daily_metrics.length, 1) },
+                    { metric: 'conversions', data: conversionsData, total: parseFloat(data.summary.conversions), average: parseFloat(data.summary.conversions) / Math.max(data.daily_metrics.length, 1) }
+                ]);
+            }
+            
+            return data;
+        } catch (err: any) {
+            console.error("Live fetch error:", err);
+            setError(err.message || 'Failed to fetch live data');
+            return null;
+        } finally {
+            setIsFetchingLive(false);
+        }
+    }, [startDate, endDate]);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             setError(null);
+            setDataSource('none');
+            setLiveData(null);
 
             try {
                 // Default to deployed backend when env var missing (production safety)
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://googleads-dashboard-backend.onrender.com/api';
-                const token = localStorage.getItem('token'); // Assuming auth token is stored here
+                const token = localStorage.getItem('token');
 
                 const headers = {
                     'Content-Type': 'application/json',
@@ -66,26 +146,44 @@ export function useDashboardData(startDate: string, endDate: string) {
 
                 const queryParams = `?start_date=${startDate}&end_date=${endDate}`;
 
-                // 1. Fetch Summary
+                // 1. Fetch Summary from database
                 const summaryRes = await fetch(`${apiUrl}/dashboard/summary${queryParams}`, { headers });
                 
                 // Handle authentication errors gracefully
                 if (summaryRes.status === 401) {
-                    console.warn('Dashboard API: Not authenticated - using demo/fallback data');
-                    // Set empty data so partner APIs still work
+                    console.warn('Dashboard API: Not authenticated - will try live fetch');
                     setSummary(null);
                     setLoading(false);
+                    // Try live fetch
+                    await fetchLiveData();
                     return;
                 }
                 
                 if (!summaryRes.ok) {
-                    console.warn(`Dashboard API returned ${summaryRes.status} - using fallback`);
+                    console.warn(`Dashboard API returned ${summaryRes.status} - will try live fetch`);
                     setSummary(null);
                     setLoading(false);
+                    await fetchLiveData();
                     return;
                 }
                 
                 const summaryData = await summaryRes.json();
+                
+                // Check if database has data (cost > 0 indicates data exists)
+                const hasData = parseFloat(summaryData.cost?.value || '0') > 0 || 
+                               parseInt(summaryData.clicks?.value || '0') > 0 ||
+                               parseInt(summaryData.impressions?.value || '0') > 0;
+                
+                if (!hasData) {
+                    console.log('No data in database for this range, fetching live from Google Ads API...');
+                    setLoading(false);
+                    // Automatically fetch live data
+                    await fetchLiveData();
+                    return;
+                }
+                
+                // Database has data, use it
+                setDataSource('database');
                 setSummary(summaryData);
 
                 // 2. Fetch Time Series (Impressions, Clicks, Cost)
@@ -112,6 +210,8 @@ export function useDashboardData(startDate: string, endDate: string) {
             } catch (err: any) {
                 console.error("Dashboard fetch error:", err);
                 setError(err.message || 'An error occurred fetching dashboard data');
+                // Try live fetch as fallback
+                await fetchLiveData();
             } finally {
                 setLoading(false);
             }
@@ -120,7 +220,7 @@ export function useDashboardData(startDate: string, endDate: string) {
         if (startDate && endDate) {
             fetchData();
         }
-    }, [startDate, endDate]);
+    }, [startDate, endDate, fetchLiveData]);
 
     return {
         summary,
@@ -128,6 +228,11 @@ export function useDashboardData(startDate: string, endDate: string) {
         topCampaigns,
         accountBreakdown,
         loading,
-        error
+        error,
+        // New properties for live fetching
+        isFetchingLive,
+        liveData,
+        dataSource,
+        refetchLive: fetchLiveData
     };
 }

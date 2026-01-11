@@ -222,6 +222,60 @@ class ApiClient {
             method: "POST",
         });
     }
+
+    // Live data fetching - fetches directly from Google Ads API
+    async fetchLiveData(dateRange: { start: string; end: string }) {
+        return this.request<LiveDataResponse>("/sync/fetch-live", {
+            params: {
+                start_date: dateRange.start,
+                end_date: dateRange.end
+            }
+        });
+    }
+}
+
+// Types for live data response
+export interface LiveDataResponse {
+    success: boolean;
+    source: string;
+    date_range: {
+        start: string;
+        end: string;
+    };
+    summary: {
+        impressions: number;
+        clicks: number;
+        cost: string;
+        conversions: string;
+        conversion_value: string;
+        ctr: string;
+        cpc: string;
+        cpa: string;
+        roas: string;
+    };
+    campaigns: LiveCampaign[];
+    daily_metrics: LiveDailyMetric[];
+    accounts_synced: number;
+}
+
+export interface LiveCampaign {
+    google_campaign_id: string;
+    name: string;
+    impressions: number;
+    clicks: number;
+    cost: string;
+    conversions: string;
+    conversion_value: string;
+    ctr: string;
+    cpc: string;
+}
+
+export interface LiveDailyMetric {
+    date: string;
+    impressions: number;
+    clicks: number;
+    cost: string;
+    conversions: string;
 }
 
 // Types

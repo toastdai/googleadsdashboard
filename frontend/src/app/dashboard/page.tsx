@@ -653,8 +653,17 @@ export default function DashboardPage() {
     const [detailModal, setDetailModal] = useState<{ type: string; title: string; data: Record<string, unknown> } | null>(null);
     const [networkFilter, setNetworkFilter] = useState<"all" | "kelkoo" | "admedia" | "maxbounty">("all");
 
-    // Fetch Live Dashboard Data from Postgres (Sync Service)
-    const { summary: liveSummary, timeSeries: liveTrends, topCampaigns: liveTopCampaigns, accountBreakdown, loading: liveLoading } = useDashboardData(dateRange.start, dateRange.end);
+    // Fetch Live Dashboard Data from Postgres (Sync Service) OR Live API
+    const { 
+        summary: liveSummary, 
+        timeSeries: liveTrends, 
+        topCampaigns: liveTopCampaigns, 
+        accountBreakdown, 
+        loading: liveLoading,
+        isFetchingLive,
+        dataSource,
+        refetchLive
+    } = useDashboardData(dateRange.start, dateRange.end);
 
     // Fetch Partner Data dynamically from API (Legacy/Partner)
     const { data: kelkooApiData, loading: kelkooLoading, error: kelkooError, isFallback: kelkooIsFallback, refetch: refetchKelkoo } = useKelkooData(dateRange.start, dateRange.end);
@@ -1335,6 +1344,19 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Data Source Indicator */}
+                    {dataSource === 'live' && (
+                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                            Live from Google Ads API
+                        </span>
+                    )}
+                    {dataSource === 'database' && (
+                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            Cached Data
+                        </span>
+                    )}
                     <DateRangePicker
                         startDate={dateRange.start}
                         endDate={dateRange.end}
@@ -1357,20 +1379,61 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Fetching Live Data Indicator */}
+            {isFetchingLive && (
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-900/40 via-gray-900 to-purple-900/40 p-6 border border-cyan-500/30">
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-400 animate-ping"></div>
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-white mb-1">Fetching Historical Data from Google Ads API...</h3>
+                            <p className="text-sm text-gray-400">
+                                No cached data found for this date range. Fetching real-time data directly from Google Ads.
+                                This may take 10-30 seconds for large accounts.
+                            </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-2 text-xs text-cyan-400">
+                                <Activity className="w-4 h-4" />
+                                <span>Live API Fetch</span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                                {dateRange.start} → {dateRange.end}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Google Ads Data Availability Notice */}
-            {!liveLoading && liveEnrichedCampaigns.length === 0 && (
+            {!liveLoading && !isFetchingLive && liveEnrichedCampaigns.length === 0 && (
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/30 via-gray-900 to-orange-900/30 p-4 border border-amber-500/30">
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
                             <AlertTriangle className="w-5 h-5 text-amber-400" />
                         </div>
-                        <div>
-                            <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available for Selected Period</h3>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available</h3>
                             <p className="text-xs text-gray-400">
-                                No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
-                                Data is available from Dec 10, 2025 onwards. Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
+                                No Google Ads data available for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                                This could be due to: no campaigns running, API access issues, or the date range having no activity.
+                                Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
                             </p>
                         </div>
+                        <button
+                            onClick={() => refetchLive()}
+                            className="px-4 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 text-sm font-medium transition-colors flex items-center gap-2"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Retry Fetch
+                        </button>
                     </div>
                 </div>
             )}
