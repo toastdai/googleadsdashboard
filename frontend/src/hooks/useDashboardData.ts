@@ -294,15 +294,40 @@ export function useDashboardData(startDate: string, endDate: string) {
                 setDataSource('database');
                 setSummary(summaryData);
 
-                // 2. Fetch Time Series (Impressions, Clicks, Cost)
-                const trendsRes = await fetch(`${apiUrl}/dashboard/metrics${queryParams}&metrics=impressions&metrics=clicks&metrics=cost&metrics=conversions`, { headers });
+                // Parallelize remaining fetches
+                const [trendsRes, campaignsRes, accountsRes] = await Promise.all([
+                    fetch(`${apiUrl}/dashboard/metrics${queryParams}&metrics=impressions&metrics=clicks&metrics=cost&metrics=conversions`, { headers }),
+                    fetch(`${apiUrl}/dashboard/breakdown/campaign${queryParams}&limit=100`, { headers }),
+                    fetch(`${apiUrl}/dashboard/breakdown/account${queryParams}`, { headers })
+                ]);
+
                 if (trendsRes.ok) {
                     const trendsData = await trendsRes.json();
                     setTimeSeries(trendsData);
                 }
 
-                // 3. Fetch Campaigns (Top 100 for now to populate table)
-                const campaignsRes = await fetch(`${apiUrl}/dashboard/breakdown/campaign${queryParams}&limit=100`, { headers });
+                if (campaignsRes.ok) {
+                    const campaignsData = await campaignsRes.json();
+
+                    // Add account names to campaigns if available mapping exists or generic
+                    // Note: The campaign breakdown endpoint should include account_name ideally
+                    // For now, we rely on what's returned
+
+                    const enrichedCampaigns = campaignsData.items.map((c: any) => ({
+                        ...c,
+                        // Ensure account is set if missing
+                        account: c.account_name || c.account || 'Unknown'
+                    }));
+
+                    setTopCampaigns(enrichedCampaigns);
+                }
+
+                if (accountsRes.ok) {
+                    const accountsData = await accountsRes.json();
+                    if (accountsData.items) {
+                        setAccountBreakdown(accountsData.items);
+                    }
+                }
                 if (campaignsRes.ok) {
                     const campaignsData = await campaignsRes.json();
                     setTopCampaigns(campaignsData.items || []);

@@ -7,7 +7,10 @@ Handles OAuth2 flow and Google Ads API interactions.
 import json
 from typing import List, Dict, Any, Optional
 from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import os
 
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
@@ -34,6 +37,9 @@ class GoogleAdsService:
         self.developer_token = settings.google_ads_developer_token
         self.redirect_uri = settings.oauth_redirect_uri
         self.login_customer_id = settings.google_ads_login_customer_id
+        # Create a thread pool for blocking I/O calls
+        # Google Ads API is network bound, so we can use more threads than CPUs
+        self._executor = ThreadPoolExecutor(max_workers=20)
     
     def get_authorization_url(self) -> str:
         """Generate OAuth2 authorization URL for user consent."""
@@ -289,9 +295,10 @@ class GoogleAdsService:
         
         metrics = []
         # Offload blocking API call to thread pool
+        # Offload blocking API call to thread pool
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
-            None, 
+            self._executor, 
             lambda: ga_service.search(customer_id=customer_id, query=query)
         )
         
