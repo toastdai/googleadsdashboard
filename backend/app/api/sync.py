@@ -365,6 +365,7 @@ async def fetch_live_data(
         # Helper function for parallel processing
         async def fetch_account_metrics(account_info):
             customer_id = str(account_info['id'])
+            account_name = account_info.get('name', f"Account {customer_id}")
             try:
                 # This is now non-blocking thanks to run_in_executor in service
                 metrics_data = await google_ads_service.fetch_daily_metrics(
@@ -373,6 +374,10 @@ async def fetch_live_data(
                     start_date=start,
                     end_date=end
                 )
+                # Inject account name into each metric row so we can aggregate later
+                for row in metrics_data:
+                    row['account_name'] = account_name
+                    
                 return metrics_data
             except Exception as e:
                 print(f"Error fetching account {customer_id}: {e}")
@@ -394,6 +399,7 @@ async def fetch_live_data(
             for row in metrics_data:
                 campaign_id = row['google_campaign_id']
                 campaign_name = row['campaign_name']
+                account_name = row.get('account_name', 'Unknown')
                 row_date = row['date']
                 
                 # Cost is in micros (divide by 1,000,000)
@@ -408,6 +414,7 @@ async def fetch_live_data(
                     all_campaigns[campaign_id] = {
                         "google_campaign_id": campaign_id,
                         "name": campaign_name,
+                        "account_name": account_name,
                         "impressions": 0,
                         "clicks": 0,
                         "cost": Decimal("0"),

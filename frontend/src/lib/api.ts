@@ -261,6 +261,7 @@ export interface LiveDataResponse {
 export interface LiveCampaign {
     google_campaign_id: string;
     name: string;
+    account_name?: string;
     impressions: number;
     clicks: number;
     cost: string;

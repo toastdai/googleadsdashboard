@@ -1047,22 +1047,26 @@ export default function DashboardPage() {
     // Chart data - use pre-formatted date labels
     const trendData = useMemo(() => {
         if (!liveTrends.length) return [];
-        // Get all unique dates
+
+        // Get all unique dates across all metrics to handle missing data points
+        const allDates = new Set<string>();
+        liveTrends.forEach(t => t.data.forEach(d => allDates.add(d.date)));
+
+        const sortedDates = Array.from(allDates).sort();
         const clickSeries = liveTrends.find(t => t.metric === 'clicks')?.data || [];
         const costSeries = liveTrends.find(t => t.metric === 'cost')?.data || [];
         const convSeries = liveTrends.find(t => t.metric === 'conversions')?.data || [];
 
-        // Use click series as base for dates, or just map them
-        return clickSeries.map((d: any) => {
-            const dateObj = new Date(d.date);
+        return sortedDates.map(dateStr => {
+            const dateObj = new Date(dateStr);
             // Format: "Oct 1"
             const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
             return {
                 date: dateLabel,
-                clicks: d.value,
-                cost: costSeries.find((c: any) => c.date === d.date)?.value || 0,
-                conversions: convSeries.find((c: any) => c.date === d.date)?.value || 0,
+                clicks: clickSeries.find(c => c.date === dateStr)?.value || 0,
+                cost: costSeries.find(c => c.date === dateStr)?.value || 0,
+                conversions: convSeries.find(c => c.date === dateStr)?.value || 0,
             };
         });
     }, [liveTrends]);
@@ -1310,19 +1314,26 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
-                    {/* Data Source Indicator */}
-                    {dataSource === 'live' && (
-                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 text-cyan-400 whitespace-nowrap">
-                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                            Live from Google Ads API
+                    {/* Live Indicator & Campaigns Badge Group */}
+                    <div className="flex items-center gap-3">
+                        {/* Data Source Indicator */}
+                        {dataSource === 'live' && (
+                            <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 text-cyan-400 whitespace-nowrap">
+                                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                                Live from Google Ads API
+                            </span>
+                        )}
+                        {dataSource === 'database' && (
+                            <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                Cached Data
+                            </span>
+                        )}
+
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25 whitespace-nowrap">
+                            {liveEnrichedCampaigns.length} Campaigns
                         </span>
-                    )}
-                    {dataSource === 'database' && (
-                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            Cached Data
-                        </span>
-                    )}
+                    </div>
 
                     <div className="h-8 w-px bg-gray-700/50 hidden md:block mx-1"></div>
 
@@ -1343,10 +1354,6 @@ export default function DashboardPage() {
                             </button>
                         ))}
                     </div>
-
-                    <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25 whitespace-nowrap">
-                        {liveEnrichedCampaigns.length} Campaigns
-                    </span>
                 </div>
             </div>
 

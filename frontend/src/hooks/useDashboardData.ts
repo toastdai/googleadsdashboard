@@ -41,6 +41,7 @@ export interface BreakdownItem {
     ctr: number;
     cpc: number;
     share_of_total: number;
+    account?: string;
 }
 
 export function useDashboardData(startDate: string, endDate: string) {
@@ -127,6 +128,7 @@ export function useDashboardData(startDate: string, endDate: string) {
         const liveCampaigns: BreakdownItem[] = data.campaigns.map(c => ({
             id: c.google_campaign_id,
             name: c.name,
+            account: c.account_name, // Map from backend
             impressions: c.impressions,
             clicks: c.clicks,
             cost: parseFloat(c.cost),
@@ -144,6 +146,46 @@ export function useDashboardData(startDate: string, endDate: string) {
         });
 
         setTopCampaigns(liveCampaigns);
+
+        // Calculate Account Breakdown from campaigns
+        const accountsMap = new Map<string, BreakdownItem>();
+
+        liveCampaigns.forEach(cmp => {
+            const accName = cmp.account || "Unknown";
+            if (!accountsMap.has(accName)) {
+                accountsMap.set(accName, {
+                    name: accName,
+                    impressions: 0,
+                    clicks: 0,
+                    cost: 0,
+                    conversions: 0,
+                    conversion_value: 0,
+                    ctr: 0,
+                    cpc: 0,
+                    share_of_total: 0
+                });
+            }
+
+            const acc = accountsMap.get(accName)!;
+            acc.impressions += cmp.impressions;
+            acc.clicks += cmp.clicks;
+            acc.cost += cmp.cost;
+            acc.conversions += cmp.conversions;
+            acc.conversion_value += cmp.conversion_value;
+        });
+
+        // Finalize account metrics
+        const accountsList = Array.from(accountsMap.values()).map(acc => ({
+            ...acc,
+            ctr: acc.impressions > 0 ? (acc.clicks / acc.impressions) * 100 : 0,
+            cpc: acc.clicks > 0 ? acc.cost / acc.clicks : 0,
+            share_of_total: totalCost > 0 ? (acc.cost / totalCost) * 100 : 0
+        }));
+
+        // Sort by cost descending
+        accountsList.sort((a, b) => b.cost - a.cost);
+
+        setAccountBreakdown(accountsList);
 
         // Convert daily metrics to time series
         const impressionsData = data.daily_metrics.map(d => ({ date: d.date, value: d.impressions }));
