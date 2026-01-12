@@ -1304,17 +1304,19 @@ export default function DashboardPage() {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
-                        Dashboard
-                    </h1>
-                    <p className="text-gray-400 mt-1">
-                        EFF24 Account Performance - <span className="text-gray-300">{new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> to <span className="text-gray-300">{new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-4">
-                    {/* Live Indicator & Campaigns Badge Group */}
+            {/* Header */}
+            <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+                <div className="flex flex-col gap-4">
+                    <div>
+                        <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
+                            Dashboard
+                        </h1>
+                        <p className="text-gray-400 mt-1">
+                            EFF24 Account Performance - <span className="text-gray-300">{new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> to <span className="text-gray-300">{new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </p>
+                    </div>
+
+                    {/* Live Indicator & Campaigns Badge Group - Moved here */}
                     <div className="flex items-center gap-3">
                         {/* Data Source Indicator */}
                         {dataSource === 'live' && (
@@ -1334,9 +1336,9 @@ export default function DashboardPage() {
                             {liveEnrichedCampaigns.length} Campaigns
                         </span>
                     </div>
+                </div>
 
-                    <div className="h-8 w-px bg-gray-700/50 hidden md:block mx-1"></div>
-
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <DateRangePicker
                         startDate={dateRange.start}
                         endDate={dateRange.end}
