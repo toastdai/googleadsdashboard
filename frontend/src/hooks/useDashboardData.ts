@@ -328,17 +328,7 @@ export function useDashboardData(startDate: string, endDate: string) {
                         setAccountBreakdown(accountsData.items);
                     }
                 }
-                if (campaignsRes.ok) {
-                    const campaignsData = await campaignsRes.json();
-                    setTopCampaigns(campaignsData.items || []);
-                }
 
-                // 4. Fetch Account Breakdown
-                const accountsRes = await fetch(`${apiUrl}/dashboard/breakdown/customer_client${queryParams}`, { headers });
-                if (accountsRes.ok) {
-                    const accountsData = await accountsRes.json();
-                    setAccountBreakdown(accountsData.items || []);
-                }
 
             } catch (err: any) {
                 console.error("Dashboard fetch error:", err);
