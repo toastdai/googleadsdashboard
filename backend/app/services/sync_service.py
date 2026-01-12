@@ -37,41 +37,84 @@ class SyncService:
         # Assuming we will add get_child_accounts to GoogleAdsService
         child_accounts = await self._get_child_accounts(manager_customer_id, refresh_token)
         
-        for account_info in child_accounts:
+        # 2. Parallel Syncing with Semaphore
+        semaphore = asyncio.Semaphore(5)  # Sync 5 accounts at a time
+        
+        async def sync_single_account(account_info):
+            async with semaphore:
+                customer_id = str(account_info['id'])
+                name = account_info['name']
+                
+                logger.info(f"Syncing account: {name} ({customer_id})")
+                
+                try:
+                    # Create or Update GoogleAdsAccount
+                    # Note: We need a new DB session for each task if we want true parallelism interacting with DB?
+                    # Actually, AsyncSession is not thread-safe but we are in asyncio single thread. 
+                    # However, sharing the same session across concurrent tasks can be tricky if they all try to commit.
+                    # It is safer to do the DB write operations sequentially per account or be very careful.
+                    # To keep it simple and safe: We will use the shared session but ensure atomic operations?
+                    # No, SQLAlchemy AsyncSession is not safe for concurrent use. 
+                    # We should probably fetch data in parallel but process/save sequentially or use independent sessions.
+                    
+                    # Strategy: Fetch ALL data in parallel first (IO bound), then save to DB (CPU/DB bound).
+                    
+                    # 1. Fetch Data (Parallel IO)
+                    metrics_data = await self.google_ads_service.fetch_daily_metrics(
+                        customer_id=customer_id,
+                        refresh_token=refresh_token,
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                    
+                    return {
+                        "account_info": account_info,
+                        "metrics_data": metrics_data,
+                        "success": True
+                    }
+                except Exception as e:
+                    logger.error(f"Failed to fetch data for account {name}: {e}")
+                    return {
+                        "account_info": account_info,
+                        "error": str(e),
+                        "success": False
+                    }
+
+        # Run fetch tasks in parallel
+        logger.info(f"Starting parallel fetch for {len(child_accounts)} accounts...")
+        fetch_results = await asyncio.gather(*[sync_single_account(acc) for acc in child_accounts])
+        
+        # 3. Process Results Sequentially (DB operations)
+        logger.info("Processing fetched data...")
+        for res in fetch_results:
+            if not res["success"]:
+                continue
+                
+            account_info = res["account_info"]
+            metrics_data = res["metrics_data"]
+            
             customer_id = str(account_info['id'])
             name = account_info['name']
             
-            logger.info(f"Syncing account: {name} ({customer_id})")
-            
-            # 2. Create or Update GoogleAdsAccount
+            # Create/Update Account
             account = await self._get_or_create_account(
                 customer_id=customer_id,
                 name=name,
-                refresh_token=refresh_token, # Using same refresh token for now as it's a manager account
+                refresh_token=refresh_token,
                 user_id=user_id,
                 is_manager=False
             )
             
-            # 3. Fetch Data for this account
-            try:
-                metrics_data = await self.google_ads_service.fetch_daily_metrics(
-                    customer_id=customer_id,
-                    refresh_token=refresh_token,
-                    start_date=start_date,
-                    end_date=end_date
-                )
-                
-                # 4. Process Metrics
-                await self._process_metrics(account, metrics_data)
-                
-                # Update last sync time
-                account.last_sync_at = datetime.utcnow()
-                await self.db.commit()
-                
-            except Exception as e:
-                logger.error(f"Failed to sync account {name}: {e}")
-                # Continue to next account
-                continue
+            # Process & Save Metrics
+            await self._process_metrics(account, metrics_data)
+            
+            # Update last sync time
+            account.last_sync_at = datetime.utcnow()
+            
+            # Commit per account to avoid huge transaction
+            await self.db.commit()
+            
+        logger.info("Sync completed.")
 
     async def _get_child_accounts(self, manager_id: str, refresh_token: str) -> List[Dict]:
         """Temporary helper to get child accounts until we move this to GoogleAdsService."""

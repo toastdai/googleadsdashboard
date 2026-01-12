@@ -27,6 +27,7 @@ async def cache_live_data_to_db(
     end_date: str,
     all_campaigns: dict,
     daily_totals: dict,
+    campaign_daily_data: list,
     child_accounts: list,
     refresh_token: str
 ):
@@ -76,36 +77,89 @@ async def cache_live_data_to_db(
                     db.add(campaign)
                     await db.flush()
             
-            # Cache daily metrics
-            for date_str, day_data in daily_totals.items():
-                metric_date = datetime.strptime(date_str, "%Y-%m-%d").date() if isinstance(date_str, str) else date_str
+            # 2. Cache campaign-level daily metrics
+            # Group by (date, campaign_id) to handle duplicates if any (though unlikely with Google Ads API structure)
+            
+            # Map campaign Google IDs to DB IDs
+            campaign_map = {} # google_id -> db_id
+            
+            # Re-fetch campaigns to get their IDs
+            result = await db.execute(
+                select(Campaign).where(Campaign.account_id == account.id)
+            )
+            campaigns_db = result.scalars().all()
+            for c in campaigns_db:
+                campaign_map[c.google_campaign_id] = c.id
+            
+            # Process granular data
+            for row in campaign_daily_data:
+                c_google_id = str(row["campaign_id"])
+                if c_google_id not in campaign_map:
+                    continue # Should not happen as we created them above
                 
-                # Check if metric exists for this date (at account level)
+                c_db_id = campaign_map[c_google_id]
+                metric_date = datetime.strptime(row["date"], "%Y-%m-%d").date() if isinstance(row["date"], str) else row["date"]
+                
+                # Upsert metric
                 result = await db.execute(
                     select(DailyMetric)
                     .where(DailyMetric.account_id == account.id)
+                    .where(DailyMetric.campaign_id == c_db_id)
                     .where(DailyMetric.date == metric_date)
-                    .where(DailyMetric.campaign_id == None)
                     .limit(1)
                 )
                 metric = result.scalar_one_or_none()
                 
+                cost_micros = int(row["cost"] * 1000000)
+                
                 if not metric:
                     metric = DailyMetric(
                         account_id=account.id,
-                        campaign_id=None,  # Account-level aggregate
+                        campaign_id=c_db_id,
+                        date=metric_date,
+                        impressions=row["impressions"],
+                        clicks=row["clicks"],
+                        cost_micros=cost_micros,
+                        conversions=Decimal(str(row["conversions"]))
+                    )
+                    db.add(metric)
+                else:
+                    metric.impressions = row["impressions"]
+                    metric.clicks = row["clicks"]
+                    metric.cost_micros = cost_micros
+                    metric.conversions = Decimal(str(row["conversions"]))
+
+            # 3. Cache Account-level daily totals (campaign_id = None)
+            # This is useful for quick account-wide aggregation
+            for date_str, day_data in daily_totals.items():
+                metric_date = datetime.strptime(date_str, "%Y-%m-%d").date() if isinstance(date_str, str) else date_str
+                
+                result = await db.execute(
+                    select(DailyMetric)
+                    .where(DailyMetric.account_id == account.id)
+                    .where(DailyMetric.campaign_id == None)
+                    .where(DailyMetric.date == metric_date)
+                    .limit(1)
+                )
+                metric = result.scalar_one_or_none()
+                
+                cost_micros = int(day_data["cost"] * 1000000)
+                
+                if not metric:
+                    metric = DailyMetric(
+                        account_id=account.id,
+                        campaign_id=None,
                         date=metric_date,
                         impressions=day_data["impressions"],
                         clicks=day_data["clicks"],
-                        cost_micros=int(day_data["cost"] * 1000000),  # Convert to micros
+                        cost_micros=cost_micros,
                         conversions=Decimal(str(day_data["conversions"]))
                     )
                     db.add(metric)
                 else:
-                    # Update existing metric
                     metric.impressions = day_data["impressions"]
                     metric.clicks = day_data["clicks"]
-                    metric.cost_micros = int(day_data["cost"] * 1000000)
+                    metric.cost_micros = cost_micros
                     metric.conversions = Decimal(str(day_data["conversions"]))
             
             await db.commit()
@@ -299,6 +353,7 @@ async def fetch_live_data(
         # Aggregate metrics from all accounts
         all_campaigns = {}
         daily_totals = {}
+        campaign_daily_data = []
         total_metrics = {
             "impressions": 0,
             "clicks": 0,
@@ -307,72 +362,97 @@ async def fetch_live_data(
             "conversion_value": Decimal("0")
         }
         
-        for account_info in child_accounts:
+        # Helper function for parallel processing
+        async def fetch_account_metrics(account_info):
             customer_id = str(account_info['id'])
-            
             try:
+                # This is now non-blocking thanks to run_in_executor in service
                 metrics_data = await google_ads_service.fetch_daily_metrics(
                     customer_id=customer_id,
                     refresh_token=refresh_token,
                     start_date=start,
                     end_date=end
                 )
-                
-                for row in metrics_data:
-                    campaign_id = row['google_campaign_id']
-                    campaign_name = row['campaign_name']
-                    row_date = row['date']
-                    
-                    # Cost is in micros (divide by 1,000,000)
-                    cost = Decimal(str(row['cost_micros'])) / Decimal("1000000")
-                    impressions = row['impressions']
-                    clicks = row['clicks']
-                    conversions = Decimal(str(row['conversions']))
-                    conversion_value = Decimal(str(row['conversion_value']))
-                    
-                    # Aggregate by campaign
-                    if campaign_id not in all_campaigns:
-                        all_campaigns[campaign_id] = {
-                            "google_campaign_id": campaign_id,
-                            "name": campaign_name,
-                            "impressions": 0,
-                            "clicks": 0,
-                            "cost": Decimal("0"),
-                            "conversions": Decimal("0"),
-                            "conversion_value": Decimal("0")
-                        }
-                    
-                    all_campaigns[campaign_id]["impressions"] += impressions
-                    all_campaigns[campaign_id]["clicks"] += clicks
-                    all_campaigns[campaign_id]["cost"] += cost
-                    all_campaigns[campaign_id]["conversions"] += conversions
-                    all_campaigns[campaign_id]["conversion_value"] += conversion_value
-                    
-                    # Aggregate by date
-                    if row_date not in daily_totals:
-                        daily_totals[row_date] = {
-                            "date": row_date,
-                            "impressions": 0,
-                            "clicks": 0,
-                            "cost": Decimal("0"),
-                            "conversions": Decimal("0")
-                        }
-                    
-                    daily_totals[row_date]["impressions"] += impressions
-                    daily_totals[row_date]["clicks"] += clicks
-                    daily_totals[row_date]["cost"] += cost
-                    daily_totals[row_date]["conversions"] += conversions
-                    
-                    # Grand totals
-                    total_metrics["impressions"] += impressions
-                    total_metrics["clicks"] += clicks
-                    total_metrics["cost"] += cost
-                    total_metrics["conversions"] += conversions
-                    total_metrics["conversion_value"] += conversion_value
-                    
+                return metrics_data
             except Exception as e:
                 print(f"Error fetching account {customer_id}: {e}")
-                continue
+                return []
+
+        # Run all fetches in parallel
+        # We can use a semaphore if there are too many accounts to avoid hitting rate limits
+        # Google Ads API has high limits, but 10-20 concurrent requests is safe
+        semaphore = asyncio.Semaphore(10)
+        
+        async def safe_fetch(acc):
+            async with semaphore:
+                return await fetch_account_metrics(acc)
+
+        results_list = await asyncio.gather(*[safe_fetch(acc) for acc in child_accounts])
+        
+        # Process results sequentially to aggregate (CPU bound, fast)
+        for metrics_data in results_list:
+            for row in metrics_data:
+                campaign_id = row['google_campaign_id']
+                campaign_name = row['campaign_name']
+                row_date = row['date']
+                
+                # Cost is in micros (divide by 1,000,000)
+                cost = Decimal(str(row['cost_micros'])) / Decimal("1000000")
+                impressions = row['impressions']
+                clicks = row['clicks']
+                conversions = Decimal(str(row['conversions']))
+                conversion_value = Decimal(str(row['conversion_value']))
+                
+                # Aggregate by campaign
+                if campaign_id not in all_campaigns:
+                    all_campaigns[campaign_id] = {
+                        "google_campaign_id": campaign_id,
+                        "name": campaign_name,
+                        "impressions": 0,
+                        "clicks": 0,
+                        "cost": Decimal("0"),
+                        "conversions": Decimal("0"),
+                        "conversion_value": Decimal("0")
+                    }
+                
+                all_campaigns[campaign_id]["impressions"] += impressions
+                all_campaigns[campaign_id]["clicks"] += clicks
+                all_campaigns[campaign_id]["cost"] += cost
+                all_campaigns[campaign_id]["conversions"] += conversions
+                all_campaigns[campaign_id]["conversions"] += conversions
+                all_campaigns[campaign_id]["conversion_value"] += conversion_value
+                
+                # Store granular data for caching
+                campaign_daily_data.append({
+                    "date": row_date,
+                    "campaign_id": campaign_id,
+                    "impressions": impressions,
+                    "clicks": clicks,
+                    "cost": cost,
+                    "conversions": conversions
+                })
+                
+                # Aggregate by date
+                if row_date not in daily_totals:
+                    daily_totals[row_date] = {
+                        "date": row_date,
+                        "impressions": 0,
+                        "clicks": 0,
+                        "cost": Decimal("0"),
+                        "conversions": Decimal("0")
+                    }
+                
+                daily_totals[row_date]["impressions"] += impressions
+                daily_totals[row_date]["clicks"] += clicks
+                daily_totals[row_date]["cost"] += cost
+                daily_totals[row_date]["conversions"] += conversions
+                
+                # Grand totals
+                total_metrics["impressions"] += impressions
+                total_metrics["clicks"] += clicks
+                total_metrics["cost"] += cost
+                total_metrics["conversions"] += conversions
+                total_metrics["conversion_value"] += conversion_value
         
         # Calculate derived metrics
         ctr = (total_metrics["clicks"] / total_metrics["impressions"] * 100) if total_metrics["impressions"] > 0 else 0
@@ -442,6 +522,7 @@ async def fetch_live_data(
                 end_date,
                 all_campaigns,
                 daily_totals,
+                campaign_daily_data,
                 child_accounts,
                 refresh_token
             )

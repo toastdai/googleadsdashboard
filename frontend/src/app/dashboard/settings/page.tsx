@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { useTheme } from "@/components/theme-provider";
+
 import { RefreshCw } from "lucide-react";
 
 interface NotificationChannel {
@@ -22,7 +22,7 @@ interface AlertSetting {
 
 export default function SettingsPage() {
     const { user } = useAuth();
-    const { theme, setTheme } = useTheme();
+
     const [syncing, setSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState("");
     const [syncDays, setSyncDays] = useState(30);
@@ -77,7 +77,7 @@ export default function SettingsPage() {
     const handleSync = async () => {
         setSyncing(true);
         setSyncMessage("");
-        
+
         try {
             const token = localStorage.getItem("token");
             const response = await fetch(
@@ -89,9 +89,9 @@ export default function SettingsPage() {
                     },
                 }
             );
-            
+
             const data = await response.json();
-            
+
             if (response.ok) {
                 setSyncMessage(`✅ Successfully synced ${syncDays} days of Google Ads data!`);
                 setTimeout(() => {
@@ -128,7 +128,7 @@ export default function SettingsPage() {
                         <p className="text-sm text-gray-400">Manually sync your Google Ads data</p>
                     </div>
                 </div>
-                
+
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                             <option value={90}>Last 90 days</option>
                         </select>
                     </div>
-                    
+
                     <button
                         onClick={handleSync}
                         disabled={syncing}
@@ -155,20 +155,19 @@ export default function SettingsPage() {
                         <RefreshCw className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`} />
                         {syncing ? "Syncing..." : "Sync Now"}
                     </button>
-                    
+
                     {syncMessage && (
-                        <div className={`p-4 rounded-xl border ${
-                            syncMessage.startsWith("✅") 
-                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                        <div className={`p-4 rounded-xl border ${syncMessage.startsWith("✅")
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                                 : "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                        }`}>
+                            }`}>
                             {syncMessage}
                         </div>
                     )}
-                    
+
                     <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <p className="text-xs text-gray-400">
-                            <strong className="text-gray-300">Note:</strong> Auto-sync runs every 6 hours automatically. 
+                            <strong className="text-gray-300">Note:</strong> Auto-sync runs every 6 hours automatically.
                             Use manual sync if you need immediate data refresh. Large date ranges (60-90 days) may take several minutes.
                         </p>
                     </div>
@@ -199,25 +198,7 @@ export default function SettingsPage() {
                 </div>
             </section>
 
-            {/* Appearance */}
-            <section className="bg-card rounded-2xl border border-border p-6">
-                <h2 className="text-lg font-display font-semibold mb-4">Appearance</h2>
-                <div className="flex items-center gap-4">
-                    <label className="text-sm">Theme</label>
-                    <div className="flex items-center bg-muted rounded-lg p-1">
-                        {["light", "dark", "system"].map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => setTheme(t as any)}
-                                className={`px-4 py-2 rounded-md text-sm capitalize transition-colors ${theme === t ? "bg-card shadow-sm" : "hover:bg-muted/80"
-                                    }`}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </section>
+
 
             {/* Notification Channels */}
             <section className="bg-card rounded-2xl border border-border p-6">

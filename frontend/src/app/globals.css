@@ -6,16 +6,6 @@
 
 @layer base {
   :root {
-    --background: 248 250 252;
-    --foreground: 15 23 42;
-    --card: 255 255 255;
-    --card-foreground: 15 23 42;
-    --border: 226 232 240;
-    --muted: 241 245 249;
-    --muted-foreground: 100 116 139;
-  }
-
-  .dark {
     --background: 11 17 32;
     --foreground: 241 245 249;
     --card: 23 32 51;
@@ -24,6 +14,7 @@
     --muted: 30 41 59;
     --muted-foreground: 148 163 184;
   }
+
 
   * {
     @apply border-border;

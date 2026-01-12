@@ -13,7 +13,6 @@ import {
     RefreshCw,
     Download,
     Search,
-    Palette,
     BarChart3,
     Maximize,
     Star,
@@ -70,7 +69,6 @@ const CommandPalette = ({
     onClose,
     onExport,
     onRefresh,
-    onToggleTheme,
     onSearch,
     onSwitchMetric,
 }: {
@@ -78,7 +76,6 @@ const CommandPalette = ({
     onClose: () => void;
     onExport: () => void;
     onRefresh: () => void;
-    onToggleTheme: () => void;
     onSearch: () => void;
     onSwitchMetric: () => void;
 }) => {
@@ -89,7 +86,6 @@ const CommandPalette = ({
         { id: "refresh", name: "Refresh Data", shortcut: "R", icon: RefreshCw, action: onRefresh },
         { id: "export", name: "Export to CSV", shortcut: "E", icon: Download, action: onExport },
         { id: "search", name: "Focus Search", shortcut: "/", icon: Search, action: onSearch },
-        { id: "theme", name: "Toggle Theme", shortcut: "T", icon: Palette, action: onToggleTheme },
         { id: "metrics", name: "Switch Metrics", shortcut: "M", icon: BarChart3, action: onSwitchMetric },
         {
             id: "fullscreen", name: "Toggle Fullscreen", shortcut: "F", icon: Maximize, action: () => {
@@ -474,14 +470,14 @@ const QuickStatsBar = ({ campaigns: campList }: { campaigns: any[] }) => {
 };
 
 // View Banner - Shows different content based on selected view tab
-const ViewBanner = ({ 
-    view, 
+const ViewBanner = ({
+    view,
     liveKelkooRevenueInr,
     totals,
     topPerformers,
     bottomPerformers
-}: { 
-    view: "overview" | "performance" | "budget"; 
+}: {
+    view: "overview" | "performance" | "budget";
     liveKelkooRevenueInr: number;
     totals: {
         clicks: number;
@@ -627,11 +623,11 @@ export default function DashboardPage() {
     const [networkFilter, setNetworkFilter] = useState<"all" | "kelkoo" | "admedia" | "maxbounty">("all");
 
     // Fetch Live Dashboard Data from Postgres (Sync Service) OR Live API
-    const { 
-        summary: liveSummary, 
-        timeSeries: liveTrends, 
-        topCampaigns: liveTopCampaigns, 
-        accountBreakdown, 
+    const {
+        summary: liveSummary,
+        timeSeries: liveTrends,
+        topCampaigns: liveTopCampaigns,
+        accountBreakdown,
         loading: liveLoading,
         isFetchingLive,
         dataSource,
@@ -744,12 +740,12 @@ export default function DashboardPage() {
             const conversions = Number(c.conversions) || 0;
             const conversionValue = Number(c.conversion_value) || 0;
             const impressions = Number(c.impressions) || 0;
-            
+
             // Calculate derived metrics from raw data
             const avgCpc = clicks > 0 ? cost / clicks : 0;
             const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
             const cpa = conversions > 0 ? cost / conversions : 0;
-            
+
             // Create enriched campaign object
             const enrichedCampaign = {
                 ...c,
@@ -769,12 +765,12 @@ export default function DashboardPage() {
                 // Network flags
                 ...detectNetwork(c.name),
             };
-            
+
             // Calculate AI-based health metrics using the same input format as BreakdownItem
             const healthScore = calculateHealthScore(c as BreakdownItem);
             const efficiencyRating = calculateEfficiencyRating(c as BreakdownItem);
             const riskLevel = calculateRiskLevel(c as BreakdownItem);
-            
+
             return {
                 ...enrichedCampaign,
                 healthScore,
@@ -909,15 +905,15 @@ export default function DashboardPage() {
             avgCpc: Number(liveSummary?.cpc.value) || 0,
             totalBudget: 0
         };
-        
+
         // Calculate total budget from campaigns
         liveEnrichedCampaigns.forEach(c => {
             if (c.budget) result.totalBudget += Number(c.budget) || 0;
         });
-        
+
         return result;
     }, [liveSummary, liveEnrichedCampaigns]);
-    
+
     // Compute conversion rate
     const conversionRate = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
 
@@ -949,7 +945,6 @@ export default function DashboardPage() {
     useKeyboardShortcut('c', () => setComparisonMode(prev => !prev));
     useKeyboardShortcut('e', handleExport);
     useKeyboardShortcut('r', handleRefresh);
-    useKeyboardShortcut('t', handleToggleTheme);
     useKeyboardShortcut('/', handleFocusSearch);
     useKeyboardShortcut('m', handleSwitchMetric);
 
@@ -984,9 +979,7 @@ export default function DashboardPage() {
         refetchMaxBounty();
     }
 
-    function handleToggleTheme() {
-        document.documentElement.classList.toggle('dark');
-    }
+
 
     function handleFocusSearch() {
         const searchInput = document.querySelector('[data-search-input]') as HTMLInputElement;
@@ -1009,9 +1002,9 @@ export default function DashboardPage() {
             return totalConversionValue / totals.cost;
         }
         // Fallback: Calculate from partner revenue
-        const partnerRevenue = networkComparison.kelkoo.revenueInr + 
-                              networkComparison.admedia.revenueInr + 
-                              networkComparison.maxbounty.revenueInr;
+        const partnerRevenue = networkComparison.kelkoo.revenueInr +
+            networkComparison.admedia.revenueInr +
+            networkComparison.maxbounty.revenueInr;
         return totals.cost > 0 ? partnerRevenue / totals.cost : 0;
     }, [totals, liveSummary, networkComparison]);
 
@@ -1024,16 +1017,16 @@ export default function DashboardPage() {
     // Compute daily trend from live timeseries data
     const dailyTrend = useMemo(() => {
         if (!liveTrends || liveTrends.length === 0) return [];
-        
+
         // Get all dates from the first metric
         const dates = liveTrends[0]?.data || [];
-        
+
         return dates.map(datePoint => {
             const clicks = liveTrends.find(m => m.metric === "clicks")?.data.find(d => d.date === datePoint.date)?.value || 0;
             const impressions = liveTrends.find(m => m.metric === "impressions")?.data.find(d => d.date === datePoint.date)?.value || 0;
             const cost = liveTrends.find(m => m.metric === "cost")?.data.find(d => d.date === datePoint.date)?.value || 0;
             const conversions = liveTrends.find(m => m.metric === "conversions")?.data.find(d => d.date === datePoint.date)?.value || 0;
-            
+
             return {
                 date: datePoint.date,
                 clicks,
@@ -1307,1204 +1300,1228 @@ export default function DashboardPage() {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
                 <div>
                     <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
                         Dashboard
                     </h1>
                     <p className="text-gray-400 mt-1">
-                        EFF24 Account Performance - {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        EFF24 Account Performance - <span className="text-gray-300">{new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> to <span className="text-gray-300">{new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-4">
                     {/* Data Source Indicator */}
                     {dataSource === 'live' && (
-                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400">
+                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 text-cyan-400 whitespace-nowrap">
                             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                             Live from Google Ads API
                         </span>
                     )}
                     {dataSource === 'database' && (
-                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
                             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                             Cached Data
                         </span>
                     )}
+
+                    <div className="h-8 w-px bg-gray-700/50 hidden md:block mx-1"></div>
+
                     <DateRangePicker
                         startDate={dateRange.start}
                         endDate={dateRange.end}
                         onChange={(start, end) => setDateRange({ start, end })}
                     />
-                    <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg px-3 py-1.5">
+
+                    <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-1">
                         {(["overview", "performance", "budget"] as const).map(view => (
                             <button
                                 key={view}
                                 onClick={() => setSelectedView(view)}
-                                className={`px-3 py-1 rounded text-sm transition-colors ${selectedView === view ? "bg-purple-500 text-white" : "text-gray-400 hover:text-white"}`}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedView === view ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20" : "text-gray-400 hover:text-white hover:bg-gray-700/50"}`}
                             >
                                 {view.charAt(0).toUpperCase() + view.slice(1)}
                             </button>
                         ))}
                     </div>
-                    <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25">
+
+                    <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25 whitespace-nowrap">
                         {liveEnrichedCampaigns.length} Campaigns
                     </span>
                 </div>
             </div>
 
-            {/* Fetching Live Data Indicator */}
-            {isFetchingLive && (
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-900/40 via-gray-900 to-purple-900/40 p-6 border border-cyan-500/30">
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
-                                <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </div>
-                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-400 animate-ping"></div>
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-white mb-1">Fetching Historical Data from Google Ads API...</h3>
-                            <p className="text-sm text-gray-400">
-                                No cached data found for this date range. Fetching real-time data directly from Google Ads.
-                                This may take 10-30 seconds for large accounts.
-                            </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                            <div className="flex items-center gap-2 text-xs text-cyan-400">
-                                <Activity className="w-4 h-4" />
-                                <span>Live API Fetch</span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                                {dateRange.start} → {dateRange.end}
-                            </div>
+            {/* Initial Loading State */}
+            {(liveLoading || (isFetchingLive && !liveSummary)) && (
+                <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
+                    <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-gray-700 border-t-purple-500 animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full border-4 border-gray-800 border-t-cyan-400 animate-spin-reverse"></div>
                         </div>
                     </div>
+                    <p className="mt-6 text-gray-400 font-medium animate-pulse">Loading Dashboard Data...</p>
                 </div>
             )}
 
-            {/* Google Ads Data Availability Notice - Only show when not loading and no campaigns */}
-            {!liveLoading && !isFetchingLive && liveEnrichedCampaigns.length === 0 && dataSource !== 'live' && (
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/30 via-gray-900 to-orange-900/30 p-4 border border-amber-500/30">
-                    <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                            <AlertTriangle className="w-5 h-5 text-amber-400" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available for Selected Period</h3>
-                            <p className="text-xs text-gray-400">
-                                No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
-                                Data is available from Dec 10, 2025 onwards. Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                console.log('Manual refetch triggered for:', dateRange);
-                                refetchLive();
-                            }}
-                            disabled={isFetchingLive}
-                            className="px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-400 text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isFetchingLive ? 'animate-spin' : ''}`} />
-                            {isFetchingLive ? 'Fetching...' : 'Fetch Live Data'}
-                        </button>
-                    </div>
-                </div>
-            )}
+            {!(liveLoading || (isFetchingLive && !liveSummary)) && (
+                <>
 
-            {/* Quick Stats Bar */}
-            <QuickStatsBar campaigns={liveEnrichedCampaigns as any[]} />
+                    {/* Fetching Live Data Indicator */}
+                    {isFetchingLive && (
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-900/40 via-gray-900 to-purple-900/40 p-6 border border-cyan-500/30">
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-400 animate-ping"></div>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-white mb-1">Fetching Historical Data from Google Ads API...</h3>
+                                    <p className="text-sm text-gray-400">
+                                        No cached data found for this date range. Fetching real-time data directly from Google Ads.
+                                        This may take 10-30 seconds for large accounts.
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <div className="flex items-center gap-2 text-xs text-cyan-400">
+                                        <Activity className="w-4 h-4" />
+                                        <span>Live API Fetch</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {dateRange.start} → {dateRange.end}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-            {/* View Banner - Shows different content based on selected tab */}
-            <ViewBanner 
-                view={selectedView} 
-                liveKelkooRevenueInr={liveKelkooAggregates.totalRevenueInr + liveKelkooAggregates.totalSaleValueInr} 
-                totals={totals}
-                topPerformers={topPerformers}
-                bottomPerformers={bottomPerformers}
-            />
-
-            {/* AI Summary */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 via-gray-900 to-cyan-900/40 p-6 border border-purple-500/20">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(139,92,246,0.15),transparent_50%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(6,182,212,0.15),transparent_50%)]" />
-                <div className="relative flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30">
-                        <span className="text-xl text-white font-bold">AI</span>
-                    </div>
-                    <div>
-                        <p className="font-medium text-sm text-purple-400 mb-2">Performance Intelligence</p>
-                        <p className="text-lg leading-relaxed text-gray-200">
-                            {liveSummary?.summary_text ? (
-                                <span className="text-gray-200">{liveSummary.summary_text}</span>
-                            ) : (
-                                <>
-                                    You spent <span className="font-bold text-amber-400">{formatCurrency(totals.cost)}</span> and generated{" "}
-                                    <span className="font-bold text-emerald-400">{formatNumber(totals.conversions)} conversions</span> at{" "}
-                                    <span className="font-bold text-purple-400">{safeToFixed(avgROAS, 2)}x ROAS</span>.
-                                </>
-                            )}
-                            {" "}
-                            <span className="text-gray-400">
-                                Kelkoo: <span className="text-emerald-400">{liveKelkooAggregates.totalLeads.toLocaleString()}</span> leads (€{liveKelkooAggregates.totalRevenueEur.toLocaleString()}).{" "}
-                                Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads (${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).{" "}
-                                MaxBounty: <span className="text-rose-400">{liveMaxBountyAggregates.leads.toLocaleString()}</span> leads (${liveMaxBountyAggregates.earnings.toLocaleString()}).
-                            </span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* AI Metrics Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button
-                    onClick={() => setDetailModal({
-                        type: "health",
-                        title: "Campaign Health Analysis",
-                        data: {
-                            score: liveEnrichedCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / Math.max(liveEnrichedCampaigns.length, 1),
-                            campaigns: liveEnrichedCampaigns.filter(c => (c.healthScore || 0) >= 70).length,
-                            topCampaigns: [...liveEnrichedCampaigns].sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0)).slice(0, 5),
-                        }
-                    })}
-                    className="bg-gradient-to-br from-purple-900/30 to-purple-900/10 rounded-xl border border-purple-500/30 p-4 text-left hover:border-purple-400/50 transition-all hover:scale-[1.02]"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-purple-400 font-medium">Avg Health Score</span>
-                        <Activity className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <p className="text-2xl font-bold text-white">{Math.round(liveEnrichedCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / Math.max(liveEnrichedCampaigns.length, 1))}</p>
-                    <p className="text-xs text-gray-500 mt-1">Out of 100</p>
-                </button>
-                <button
-                    onClick={() => setDetailModal({
-                        type: "performers",
-                        title: "High Performing Campaigns",
-                        data: {
-                            count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length,
-                            campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B"),
-                        }
-                    })}
-                    className="bg-gradient-to-br from-emerald-900/30 to-emerald-900/10 rounded-xl border border-emerald-500/30 p-4 text-left hover:border-emerald-400/50 transition-all hover:scale-[1.02]"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-emerald-400 font-medium">High Performers</span>
-                        <Star className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <p className="text-2xl font-bold text-emerald-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length}</p>
-                    <p className="text-xs text-gray-500 mt-1">A/B Rated Campaigns</p>
-                </button>
-                <button
-                    onClick={() => setDetailModal({
-                        type: "attention",
-                        title: "Campaigns Needing Attention",
-                        data: {
-                            count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D").length,
-                            campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D"),
-                        }
-                    })}
-                    className="bg-gradient-to-br from-amber-900/30 to-amber-900/10 rounded-xl border border-amber-500/30 p-4 text-left hover:border-amber-400/50 transition-all hover:scale-[1.02]"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-amber-400 font-medium">Needs Attention</span>
-                        <AlertTriangle className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <p className="text-2xl font-bold text-amber-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D").length}</p>
-                    <p className="text-xs text-gray-500 mt-1">Medium Risk</p>
-                </button>
-                <button
-                    onClick={() => setDetailModal({
-                        type: "risk",
-                        title: "At Risk Campaigns",
-                        data: {
-                            count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F").length,
-                            campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F"),
-                        }
-                    })}
-                    className="bg-gradient-to-br from-rose-900/30 to-rose-900/10 rounded-xl border border-rose-500/30 p-4 text-left hover:border-rose-400/50 transition-all hover:scale-[1.02]"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-rose-400 font-medium">At Risk</span>
-                        <AlertCircle className="w-5 h-5 text-rose-400" />
-                    </div>
-                    <p className="text-2xl font-bold text-rose-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F").length}</p>
-                    <p className="text-xs text-gray-500 mt-1">High Risk Campaigns</p>
-                </button>
-            </div>
-
-            {/* Data Source Summary (Kelkoo + Admedia + MaxBounty) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Kelkoo Summary - Now with LIVE API data */}
-                <div className="bg-gradient-to-br from-cyan-900/20 to-purple-900/20 rounded-xl border border-cyan-500/20 p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="px-2 py-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded text-xs font-bold text-white">KL</div>
-                        <h3 className="text-lg font-semibold text-white">Kelkoo ({dateRangeLabel})</h3>
-                        {kelkooLoading ? (
-                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
-                        ) : kelkooIsFallback ? (
-                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
-                        ) : (
-                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
-                        )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                refetchKelkoo();
-                            }}
-                            disabled={kelkooLoading}
-                            className="ml-auto p-1.5 rounded-lg hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
-                            title="Refresh Kelkoo data"
-                        >
-                            <RefreshCw className={`w-4 h-4 text-cyan-400 ${kelkooLoading ? 'animate-spin' : ''}`} />
-                        </button>
-                        {kelkooError && <span className="text-xs text-red-400">{kelkooError}</span>}
-                    </div>
-                    <div
-                        className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-cyan-900/10 rounded-lg p-2 -m-2 transition-colors"
-                        onClick={() => setDetailModal({
-                            type: "kelkoo",
-                            title: "Kelkoo Performance Details",
-                            data: {
-                                leads: liveKelkooAggregates.totalLeads,
-                                revenue: liveKelkooAggregates.totalRevenueEur,
-                                revenueInr: liveKelkooAggregates.totalRevenueInr,
-                                sales: liveKelkooAggregates.totalSales,
-                                saleValue: liveKelkooAggregates.totalSaleValueEur,
-                                saleValueInr: liveKelkooAggregates.totalSaleValueInr,
-                                conversionRate: liveKelkooAggregates.conversionRate,
-                                revenuePerLead: liveKelkooAggregates.vpl,
-                                isLive: !kelkooIsFallback,
-                                campaigns: liveEnrichedCampaigns.filter(c => c.isKelkoo),
-                            }
-                        })}
-                    >
-                        <div>
-                            <p className="text-xs text-gray-500">Leads</p>
-                            <p className="text-xl font-bold text-cyan-400">
-                                {liveKelkooAggregates.totalLeads.toLocaleString()}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Revenue</p>
-                            <p className="text-lg font-bold text-emerald-400">
-                                €{liveKelkooAggregates.totalRevenueEur.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-emerald-300/70">
-                                ₹{liveKelkooAggregates.totalRevenueInr.toLocaleString()}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Sales</p>
-                            <p className="text-xl font-bold text-purple-400">
-                                {liveKelkooAggregates.totalSales}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Sale Value</p>
-                            <p className="text-base font-semibold text-white">
-                                €{liveKelkooAggregates.totalSaleValueEur.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                                ₹{liveKelkooAggregates.totalSaleValueInr.toLocaleString()}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Conv. Rate</p>
-                            <p className="text-base font-semibold text-white">
-                                {safeToFixed(liveKelkooAggregates.conversionRate, 2)}%
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Value/Lead</p>
-                            <p className="text-base font-semibold text-white">
-                                €{safeToFixed(liveKelkooAggregates.vpl, 2)}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                                ₹{safeToFixed(liveKelkooAggregates.vpl * 89.5, 2)}
-                            </p>
-                        </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
-                </div>
-
-                {/* Admedia Summary */}
-                <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 rounded-xl border border-amber-500/20 p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded text-xs font-bold text-white">AM</div>
-                        <h3 className="text-lg font-semibold text-white">Admedia ({dateRangeLabel})</h3>
-                        {admediaLoading ? (
-                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
-                        ) : admediaIsFallback ? (
-                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
-                        ) : (
-                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
-                        )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                refetchAdmedia();
-                            }}
-                            disabled={admediaLoading}
-                            className="ml-auto p-1.5 rounded-lg hover:bg-amber-500/20 transition-colors disabled:opacity-50"
-                            title="Refresh Admedia data"
-                        >
-                            <RefreshCw className={`w-4 h-4 text-amber-400 ${admediaLoading ? 'animate-spin' : ''}`} />
-                        </button>
-                        {admediaError && <span className="text-xs text-red-400">{admediaError}</span>}
-                    </div>
-                    <div
-                        className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-amber-900/10 rounded-lg p-2 -m-2 transition-colors"
-                        onClick={() => setDetailModal({
-                            type: "admedia",
-                            title: "Admedia Performance Details",
-                            data: {
-                                leads: liveAdmediaAggregates.totalLeads,
-                                conversions: liveAdmediaAggregates.totalConversions,
-                                earningsUsd: liveAdmediaAggregates.totalEarningsUsd,
-                                earningsInr: liveAdmediaAggregates.totalEarningsInr,
-                                conversionRate: liveAdmediaAggregates.conversionRate,
-                                cpc: liveAdmediaAggregates.cpc,
-                                cpl: liveAdmediaAggregates.cpl,
-                                isLive: !admediaIsFallback,
-                                campaigns: liveEnrichedCampaigns.filter(c => c.isAdmedia),
-                            }
-                        })}
-                    >
-                        <div>
-                            <p className="text-xs text-gray-500">Leads</p>
-                            <p className="text-xl font-bold text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Conversions</p>
-                            <p className="text-xl font-bold text-emerald-400">{liveAdmediaAggregates.totalConversions.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Conv Rate</p>
-                            <p className="text-xl font-bold text-purple-400">{safeToFixed(liveAdmediaAggregates.conversionRate, 1)}%</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Earnings</p>
-                            <p className="text-base font-semibold text-emerald-400">${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}</p>
-                            <p className="text-xs text-emerald-300/70">₹{liveAdmediaAggregates.totalEarningsInr.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">CPC</p>
-                            <p className="text-base font-semibold text-white">${safeToFixed(liveAdmediaAggregates.cpc, 2)}</p>
-                            <p className="text-xs text-gray-400">₹{safeToFixed(liveAdmediaAggregates.cpc * 83.5, 2)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">CPL</p>
-                            <p className="text-base font-semibold text-white">${safeToFixed(liveAdmediaAggregates.cpl, 2)}</p>
-                            <p className="text-xs text-gray-400">₹{safeToFixed(liveAdmediaAggregates.cpl * 83.5, 2)}</p>
-                        </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
-                </div>
-
-                {/* MaxBounty Summary - LIVE API data */}
-                <div className="bg-gradient-to-br from-rose-900/20 to-red-900/20 rounded-xl border border-rose-500/20 p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</div>
-                        <h3 className="text-lg font-semibold text-white">MaxBounty ({dateRangeLabel})</h3>
-                        {maxBountyLoading ? (
-                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
-                        ) : maxBountyIsFallback ? (
-                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
-                        ) : (
-                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
-                        )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                refetchMaxBounty();
-                            }}
-                            disabled={maxBountyLoading}
-                            className="ml-auto p-1.5 rounded-lg hover:bg-rose-500/20 transition-colors disabled:opacity-50"
-                            title="Refresh MaxBounty data"
-                        >
-                            <RefreshCw className={`w-4 h-4 text-rose-400 ${maxBountyLoading ? 'animate-spin' : ''}`} />
-                        </button>
-                        {maxBountyError && <span className="text-xs text-red-400" title={maxBountyError}>Network error</span>}
-                    </div>
-                    <div
-                        className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-rose-900/10 rounded-lg p-2 -m-2 transition-colors"
-                        onClick={() => setDetailModal({
-                            type: "maxbounty",
-                            title: "MaxBounty Performance Details",
-                            data: {
-                                clicks: liveMaxBountyAggregates.clicks,
-                                leads: liveMaxBountyAggregates.leads,
-                                earnings: liveMaxBountyAggregates.earnings,
-                                earningsInr: liveMaxBountyAggregates.earningsInr,
-                                conversion: liveMaxBountyAggregates.conversion,
-                                epc: liveMaxBountyAggregates.epc,
-                                sales: liveMaxBountyAggregates.sales,
-                                isLive: !maxBountyIsFallback,
-                                campaigns: maxBountyCampaigns,
-                            }
-                        })}
-                    >
-                        <div>
-                            <p className="text-xs text-gray-500">Clicks</p>
-                            <p className="text-xl font-bold text-rose-400">{liveMaxBountyAggregates.clicks.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Leads</p>
-                            <p className="text-xl font-bold text-emerald-400">{liveMaxBountyAggregates.leads.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Conv Rate</p>
-                            <p className="text-xl font-bold text-purple-400">{safeToFixed(liveMaxBountyAggregates.conversion, 1)}%</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Earnings</p>
-                            <p className="text-base font-semibold text-emerald-400">${liveMaxBountyAggregates.earnings.toLocaleString()}</p>
-                            <p className="text-xs text-emerald-300/70">₹{liveMaxBountyAggregates.earningsInr.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">EPC</p>
-                            <p className="text-base font-semibold text-white">${safeToFixed(liveMaxBountyAggregates.epc, 2)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Sales Value</p>
-                            <p className="text-base font-semibold text-white">${liveMaxBountyAggregates.sales.toLocaleString()}</p>
-                        </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
-                </div>
-            </div>
-
-            {/* Primary KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-                <EnhancedKPICard
-                    title="Total Clicks"
-                    value={liveSummary ? formatNumber(liveSummary.clicks.value) : formatNumber(totals.clicks)}
-                    subtitle={liveSummary ? `${formatNumber(liveSummary.impressions.value)} impr.` : `${formatNumber(totals.impressions)} impr.`}
-                    trend={liveSummary?.clicks.change_percent ? `${safeToFixed(liveSummary.clicks.change_percent, 1)}%` : "+8.2%"}
-                    trendUp={liveSummary?.clicks.change_direction === "up"}
-                    icon={<ClicksIcon />}
-                    color="primary"
-                    sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "clicks")?.data.map(d => d.value) : clicksSparkData}
-                    onClick={() => setSelectedMetric("clicks")}
-                />
-                <EnhancedKPICard
-                    title="Total Cost"
-                    value={liveSummary ? formatCurrency(liveSummary.cost.value) : formatCurrency(totals.cost)}
-                    subtitle={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)} avg CPC` : `Rs.${safeToFixed(totals.avgCpc, 0)} avg CPC`}
-                    trend={liveSummary?.cost.change_percent ? `${safeToFixed(liveSummary.cost.change_percent, 1)}%` : "-2.4%"}
-                    trendUp={liveSummary?.cost.change_direction === "down"}
-                    icon={<CostIcon />}
-                    color="warning"
-                    sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "cost")?.data.map(d => d.value) : costSparkData}
-                    onClick={() => setSelectedMetric("cost")}
-                />
-                <EnhancedKPICard
-                    title="Conversions"
-                    value={liveSummary ? formatNumber(liveSummary.conversions.value) : formatNumber(totals.conversions)}
-                    subtitle={liveSummary ? `${safeToFixed(liveSummary.conversions.value / liveSummary.clicks.value * 100, 1)}% rate` : `${safeToFixed(conversionRate, 1)}% rate`}
-                    trend={liveSummary?.conversions.change_percent ? `${safeToFixed(liveSummary.conversions.change_percent, 1)}%` : "+15.3%"}
-                    trendUp={liveSummary?.conversions.change_direction === "up"}
-                    icon={<ConversionsIcon />}
-                    color="success"
-                    sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "conversions")?.data.map(d => d.value) : convSparkData}
-                    onClick={() => setSelectedMetric("conversions")}
-                />
-                <EnhancedKPICard
-                    title="CTR"
-                    value={liveSummary ? `${safeToFixed(liveSummary.ctr.value, 2)}%` : `${safeToFixed(totals.ctr, 2)}%`}
-                    subtitle="Above avg"
-                    trend={liveSummary?.ctr.change_percent ? `${safeToFixed(liveSummary.ctr.change_percent, 1)}%` : "+0.5%"}
-                    trendUp={liveSummary?.ctr.change_direction === "up"}
-                    icon={<CTRIcon />}
-                    color="cyan"
-                    sparkData={ctrSparkData}
-                    onClick={() => setActiveKPI("ctr")}
-                />
-                <EnhancedKPICard
-                    title="Avg CPC"
-                    value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)}` : `Rs.${safeToFixed(totals.avgCpc, 0)}`}
-                    subtitle="Per click"
-                    trend={liveSummary?.cpc.change_percent ? `${safeToFixed(liveSummary.cpc.change_percent, 1)}%` : "-1.2%"}
-                    trendUp={liveSummary?.cpc.change_direction === "down"}
-                    icon={<CPCIcon />}
-                    color="warning"
-                    onClick={() => setActiveKPI("cpc")}
-                />
-                <EnhancedKPICard
-                    title="CPA"
-                    value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpa.value, 0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
-                    subtitle="Per conversion"
-                    trend={liveSummary?.cpa.change_percent ? `${safeToFixed(liveSummary.cpa.change_percent, 1)}%` : "-3.5%"}
-                    trendUp={liveSummary?.cpa.change_direction === "down"}
-                    icon={<ConversionsIcon />}
-                    color="danger"
-                    onClick={() => setActiveKPI("cpa")}
-                />
-                <EnhancedKPICard
-                    title="ROAS"
-                    value={liveSummary ? `${safeToFixed(liveSummary.roas.value, 2)}x` : `${safeToFixed(avgROAS, 2)}x`}
-                    subtitle="Return on ad spend"
-                    trend={liveSummary?.roas.change_percent ? `${safeToFixed(liveSummary.roas.change_percent, 1)}%` : "+5.2%"}
-                    trendUp={liveSummary?.roas.change_direction === "up"}
-                    icon={<ROASIcon />}
-                    color="success"
-                    onClick={() => setActiveKPI("roas")}
-                />
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Chart */}
-                <div className="lg:col-span-2 bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <h2 className="text-lg font-display font-semibold text-white">Performance Trends</h2>
-                        <div className="flex items-center gap-2">
-                            {(["clicks", "cost", "conversions"] as const).map((metric, i) => (
+                    {/* Google Ads Data Availability Notice - Only show when not loading and no campaigns */}
+                    {!liveLoading && !isFetchingLive && liveEnrichedCampaigns.length === 0 && (
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-900/30 via-gray-900 to-orange-900/30 p-4 border border-amber-500/30">
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                                    <AlertTriangle className="w-5 h-5 text-amber-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available for Selected Period</h3>
+                                    <p className="text-xs text-gray-400">
+                                        No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                                        Data is available from Dec 10, 2025 onwards. Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
+                                    </p>
+                                </div>
                                 <button
-                                    key={metric}
-                                    onClick={() => setSelectedMetric(metric)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedMetric === metric
-                                        ? "bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25"
-                                        : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
-                                        }`}
+                                    onClick={() => {
+                                        console.log('Manual refetch triggered for:', dateRange);
+                                        refetchLive();
+                                    }}
+                                    disabled={isFetchingLive}
+                                    className="px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-400 text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
                                 >
-                                    <span className="hidden md:inline">{metric.charAt(0).toUpperCase() + metric.slice(1)}</span>
-                                    <span className="md:hidden">{i + 1}</span>
+                                    <RefreshCw className={`w-4 h-4 ${isFetchingLive ? 'animate-spin' : ''}`} />
+                                    {isFetchingLive ? 'Fetching...' : 'Fetch Live Data'}
                                 </button>
-                            ))}
+                            </div>
                         </div>
-                    </div>
-                    <MetricsAreaChart
-                        data={trendData}
-                        metrics={[{ key: selectedMetric, name: selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1), color: "#8b5cf6" }]}
-                        height={300}
-                        showAverage
+                    )}
+
+                    {/* Quick Stats Bar */}
+                    <QuickStatsBar campaigns={liveEnrichedCampaigns as any[]} />
+
+                    {/* View Banner - Shows different content based on selected tab */}
+                    <ViewBanner
+                        view={selectedView}
+                        liveKelkooRevenueInr={liveKelkooAggregates.totalRevenueInr + liveKelkooAggregates.totalSaleValueInr}
+                        totals={totals}
+                        topPerformers={topPerformers}
+                        bottomPerformers={bottomPerformers}
                     />
-                </div>
 
-                {/* Account Breakdown Pie */}
-                <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
-                    <h2 className="text-lg font-display font-semibold text-white mb-4">Cost by Account</h2>
-                    <MetricsPieChart data={accountData} height={240} innerRadius={60} showLabels={false} />
-                    <div className="mt-4 space-y-2">
-                        {accountData.map((acc, i) => (
-                            <div key={acc.name} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-3 h-3 rounded-full ${i === 0 ? "bg-purple-500" : i === 1 ? "bg-cyan-500" : "bg-emerald-500"}`} />
-                                    <span className="text-gray-300">{acc.name}</span>
-                                </div>
-                                <span className="font-medium text-white">{formatCurrency(acc.value)}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Secondary Charts Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Top Performers */}
-                <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
-                    <h2 className="text-lg font-display font-semibold text-white mb-4 flex items-center gap-2">
-                        <span className="text-emerald-400">Top</span> Performers by ROAS
-                    </h2>
-                    <div className="space-y-3">
-                        {topPerformers.slice(0, 5).map((camp, i) => (
-                            <button
-                                key={camp.id}
-                                onClick={() => setSelectedCampaign(camp)}
-                                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/50 transition-colors text-left border border-transparent hover:border-gray-700"
-                            >
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${i === 0 ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg shadow-orange-500/30" :
-                                    i === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800" :
-                                        i === 2 ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white" :
-                                            "bg-gray-700 text-gray-300"
-                                    }`}>
-                                    {i + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-white truncate">{camp.name}</p>
-                                    <p className="text-xs text-gray-500">{safeToFixed(camp.conversions, 0)} conv @ Rs.{safeToFixed(camp.cpa, 0)} CPA</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-emerald-400">{safeToFixed(camp.roas, 2)}x</p>
-                                    <p className="text-xs text-gray-500">ROAS</p>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Account Performance Cards */}
-                <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
-                    <h2 className="text-lg font-display font-semibold text-white mb-4">Account Performance</h2>
-                    <div className="space-y-4">
-                        {accountBreakdown.map((acc, i) => (
-                            <div key={acc.name} className="p-4 rounded-xl bg-gray-800/30 border border-gray-700/50 hover:border-gray-600 transition-colors">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white ${i === 0 ? "bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30" :
-                                            i === 1 ? "bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-lg shadow-cyan-500/30" :
-                                                "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30"
-                                            }`}>
-                                            {acc.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-white">{acc.name}</p>
-                                            {/* <p className="text-xs text-gray-500">{acc.campaigns} campaigns</p> */}
-                                        </div>
-                                    </div>
-                                    <p className="text-lg font-bold text-white">{formatCurrency(acc.cost)}</p>
-                                </div>
-                                <ProgressBar
-                                    value={acc.cost}
-                                    max={totals.cost}
-                                    color={i === 0 ? "primary" : i === 1 ? "warning" : "success"}
-                                    size="sm"
-                                    showValue={false}
-                                />
-                                <div className="grid grid-cols-3 gap-4 text-sm mt-3">
-                                    <div>
-                                        <p className="text-gray-500 text-xs">Clicks</p>
-                                        <p className="font-medium text-white">{formatNumber(acc.clicks)}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-500 text-xs">Conversions</p>
-                                        <p className="font-medium text-white">{formatNumber(acc.conversions)}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-500 text-xs">CPA</p>
-                                        <p className="font-medium text-white">Rs.{safeToFixed(acc.cost / acc.conversions, 0)}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Top Campaigns Bar Chart */}
-            <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
-                <h2 className="text-lg font-display font-semibold text-white mb-4">Top 10 Campaigns by Spend</h2>
-                <MetricsBarChart
-                    data={campaignCostData}
-                    metrics={[
-                        { key: "cost", name: "Cost", color: "#f59e0b" },
-                        { key: "conversions", name: "Conversions", color: "#22c55e" }
-                    ]}
-                    height={300}
-                    format="currency"
-                />
-            </div>
-
-            {/* Campaign Table */}
-            <div className="space-y-6">
-                {/* Network Filters & Comparison - Inline with Table */}
-                <div className="relative z-10 flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between bg-gray-900/80 rounded-2xl p-4 border border-gray-700/50 backdrop-blur-sm">
-                    {/* Network Filter Buttons */}
-                    <div className="flex items-center gap-2 bg-gray-800/70 rounded-xl p-3 border border-gray-600/50">
-                        <span className="text-xs text-gray-500 mr-2">Network:</span>
-                        {([
-                            { key: "all", label: "All", color: "bg-gray-600", count: liveEnrichedCampaigns.length },
-                            { key: "kelkoo", label: "Kelkoo", color: "bg-gradient-to-r from-purple-500 to-cyan-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isKelkoo).length },
-                            { key: "admedia", label: "Admedia", color: "bg-gradient-to-r from-amber-500 to-orange-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isAdmedia).length },
-                            { key: "maxbounty", label: "MaxBounty", color: "bg-gradient-to-r from-rose-500 to-red-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isMaxBounty).length },
-                        ] as const).map(({ key, label, color, count }) => (
-                            <button
-                                key={key}
-                                onClick={() => setNetworkFilter(key)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${networkFilter === key
-                                    ? `${color} text-white shadow-lg`
-                                    : "bg-gray-700/50 text-gray-400 hover:bg-gray-700 hover:text-white"
-                                    }`}
-                            >
-                                {label}
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${networkFilter === key ? "bg-white/20" : "bg-gray-600"}`}>{count}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Network ROAS Comparison */}
-                    <div className="flex gap-3 flex-wrap">
-                        <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "kelkoo" ? "bg-purple-500/30 border-purple-500/60 shadow-purple-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-purple-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "kelkoo" ? "all" : "kelkoo")}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-white">KL</span>
-                                </div>
-                                <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.kelkoo.roas, 2)}x</p>
-                                    <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.kelkoo.revenueInr / 1000, 0)}k rev</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "admedia" ? "bg-amber-500/30 border-amber-500/60 shadow-amber-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-amber-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "admedia" ? "all" : "admedia")}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-white">AM</span>
-                                </div>
-                                <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.admedia.roas, 2)}x</p>
-                                    <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.admedia.revenueInr / 1000, 0)}k rev</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "maxbounty" ? "bg-rose-500/30 border-rose-500/60 shadow-rose-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-rose-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "maxbounty" ? "all" : "maxbounty")}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-white">MB</span>
-                                </div>
-                                <div className="text-right">
-                                    <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.maxbounty.roas, 2)}x</p>
-                                    <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.maxbounty.revenueInr / 1000, 0)}k rev</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="relative z-0">
-                    <DataTable
-                        data={filteredCampaigns}
-                        columns={campaignColumns}
-                        title={`${networkFilter === "all" ? "All" : networkFilter.charAt(0).toUpperCase() + networkFilter.slice(1)} Campaigns (${filteredCampaigns.length}${kelkooLoading || admediaLoading || maxBountyLoading ? " - loading..." : ""})`}
-                        searchKeys={["name", "account"]}
-                        pageSize={10}
-                    />
-                </div>
-            </div>
-
-            {/* Campaign Modal */}
-            <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
-
-            {/* KPI Analytics Modal */}
-            {activeKPI && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setActiveKPI(null)}>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-                            <h2 className="text-xl font-display font-bold text-white">
-                                {activeKPI === "ctr" && "Click-Through Rate Analysis"}
-                                {activeKPI === "cpc" && "Cost Per Click Analysis"}
-                                {activeKPI === "cpa" && "Cost Per Acquisition Analysis"}
-                                {activeKPI === "roas" && "Return on Ad Spend Analysis"}
-                            </h2>
-                            <button onClick={() => setActiveKPI(null)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="p-6">
-                            <div className="text-center mb-6">
-                                <p className="text-5xl font-display font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                                    {activeKPI === "ctr" && `${safeToFixed(totals.ctr, 2)}%`}
-                                    {activeKPI === "cpc" && `Rs.${safeToFixed(totals.avgCpc, 0)}`}
-                                    {activeKPI === "cpa" && `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
-                                    {activeKPI === "roas" && `${safeToFixed(avgROAS, 2)}x`}
-                                </p>
-                            </div>
-                            <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
-                                <h3 className="text-sm font-semibold text-white mb-3">Key Insights</h3>
-                                <ul className="space-y-2 text-sm text-gray-300">
-                                    {activeKPI === "ctr" && (
-                                        <>
-                                            <li>- Average CTR of {safeToFixed(totals.ctr, 2)}% is above industry average</li>
-                                            <li>- Best performer: {topPerformers[0]?.name} at {safeToFixed(topPerformers[0]?.ctr, 2)}%</li>
-                                            <li>- {liveEnrichedCampaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
-                                        </>
-                                    )}
-                                    {activeKPI === "cpc" && (
-                                        <>
-                                            <li>- Average CPC of Rs.{safeToFixed(totals.avgCpc, 0)} across {liveEnrichedCampaigns.length} campaigns</li>
-                                            <li>- Total clicks: {totals.clicks.toLocaleString()}</li>
-                                            <li>- Consider bid adjustments for high CPC campaigns</li>
-                                        </>
-                                    )}
-                                    {activeKPI === "cpa" && (
-                                        <>
-                                            <li>- Average CPA: Rs.{safeToFixed(totals.cost / totals.conversions, 0)} per conversion</li>
-                                            <li>- Total conversions: {totals.conversions.toLocaleString()}</li>
-                                            <li>- {liveEnrichedCampaigns.filter(c => c.conversionRate > 50).length} high-converting campaigns</li>
-                                        </>
-                                    )}
-                                    {activeKPI === "roas" && (
-                                        <>
-                                            <li>- Average ROAS: {safeToFixed(avgROAS, 2)}x return on ad spend</li>
-                                            <li>- {liveEnrichedCampaigns.filter(c => c.conversions > 200).length} campaigns with 200+ conversions</li>
-                                            <li>- Total ad spend: {formatCurrency(totals.cost)}</li>
-                                        </>
-                                    )}
-                                </ul>
+                    {/* AI Summary */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 via-gray-900 to-cyan-900/40 p-6 border border-purple-500/20">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(139,92,246,0.15),transparent_50%)]" />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(6,182,212,0.15),transparent_50%)]" />
+                        <div className="relative flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30">
+                                <span className="text-xl text-white font-bold">AI</span>
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-white mb-3">Top 5 Campaigns</h3>
-                                <div className="space-y-2">
-                                    {topPerformers.slice(0, 5).map((camp, i) => (
-                                        <div key={camp.id} className="flex items-center gap-3">
-                                            <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                            <span className="text-sm text-gray-300 flex-1 truncate">{camp.name}</span>
-                                            <span className="text-sm font-medium text-white">
-                                                {activeKPI === "ctr" ? `${safeToFixed(camp.ctr, 2)}%` :
-                                                    activeKPI === "cpc" ? `Rs.${safeToFixed(camp.avgCpc, 0)}` :
-                                                        activeKPI === "cpa" ? `Rs.${safeToFixed(camp.cost / Math.max(camp.conversions, 1), 0)}` :
-                                                            `${safeToFixed(camp.conversions * 175 / camp.cost, 2)}x`}
-                                            </span>
-                                        </div>
+                                <p className="font-medium text-sm text-purple-400 mb-2">Performance Intelligence</p>
+                                <p className="text-lg leading-relaxed text-gray-200">
+                                    {liveSummary?.summary_text ? (
+                                        <span className="text-gray-200">{liveSummary.summary_text}</span>
+                                    ) : (
+                                        <>
+                                            You spent <span className="font-bold text-amber-400">{formatCurrency(totals.cost)}</span> and generated{" "}
+                                            <span className="font-bold text-emerald-400">{formatNumber(totals.conversions)} conversions</span> at{" "}
+                                            <span className="font-bold text-purple-400">{safeToFixed(avgROAS, 2)}x ROAS</span>.
+                                        </>
+                                    )}
+                                    {" "}
+                                    <span className="text-gray-400">
+                                        Kelkoo: <span className="text-emerald-400">{liveKelkooAggregates.totalLeads.toLocaleString()}</span> leads (€{liveKelkooAggregates.totalRevenueEur.toLocaleString()}).{" "}
+                                        Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads (${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).{" "}
+                                        MaxBounty: <span className="text-rose-400">{liveMaxBountyAggregates.leads.toLocaleString()}</span> leads (${liveMaxBountyAggregates.earnings.toLocaleString()}).
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* AI Metrics Summary Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button
+                            onClick={() => setDetailModal({
+                                type: "health",
+                                title: "Campaign Health Analysis",
+                                data: {
+                                    score: liveEnrichedCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / Math.max(liveEnrichedCampaigns.length, 1),
+                                    campaigns: liveEnrichedCampaigns.filter(c => (c.healthScore || 0) >= 70).length,
+                                    topCampaigns: [...liveEnrichedCampaigns].sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0)).slice(0, 5),
+                                }
+                            })}
+                            className="bg-gradient-to-br from-purple-900/30 to-purple-900/10 rounded-xl border border-purple-500/30 p-4 text-left hover:border-purple-400/50 transition-all hover:scale-[1.02]"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-purple-400 font-medium">Avg Health Score</span>
+                                <Activity className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-white">{Math.round(liveEnrichedCampaigns.reduce((sum, c) => sum + (c.healthScore || 0), 0) / Math.max(liveEnrichedCampaigns.length, 1))}</p>
+                            <p className="text-xs text-gray-500 mt-1">Out of 100</p>
+                        </button>
+                        <button
+                            onClick={() => setDetailModal({
+                                type: "performers",
+                                title: "High Performing Campaigns",
+                                data: {
+                                    count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length,
+                                    campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B"),
+                                }
+                            })}
+                            className="bg-gradient-to-br from-emerald-900/30 to-emerald-900/10 rounded-xl border border-emerald-500/30 p-4 text-left hover:border-emerald-400/50 transition-all hover:scale-[1.02]"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-emerald-400 font-medium">High Performers</span>
+                                <Star className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-emerald-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "A" || c.efficiencyRating === "B").length}</p>
+                            <p className="text-xs text-gray-500 mt-1">A/B Rated Campaigns</p>
+                        </button>
+                        <button
+                            onClick={() => setDetailModal({
+                                type: "attention",
+                                title: "Campaigns Needing Attention",
+                                data: {
+                                    count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D").length,
+                                    campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D"),
+                                }
+                            })}
+                            className="bg-gradient-to-br from-amber-900/30 to-amber-900/10 rounded-xl border border-amber-500/30 p-4 text-left hover:border-amber-400/50 transition-all hover:scale-[1.02]"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-amber-400 font-medium">Needs Attention</span>
+                                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-amber-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "C" || c.efficiencyRating === "D").length}</p>
+                            <p className="text-xs text-gray-500 mt-1">Medium Risk</p>
+                        </button>
+                        <button
+                            onClick={() => setDetailModal({
+                                type: "risk",
+                                title: "At Risk Campaigns",
+                                data: {
+                                    count: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F").length,
+                                    campaigns: liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F"),
+                                }
+                            })}
+                            className="bg-gradient-to-br from-rose-900/30 to-rose-900/10 rounded-xl border border-rose-500/30 p-4 text-left hover:border-rose-400/50 transition-all hover:scale-[1.02]"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-rose-400 font-medium">At Risk</span>
+                                <AlertCircle className="w-5 h-5 text-rose-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-rose-400">{liveEnrichedCampaigns.filter(c => c.efficiencyRating === "F").length}</p>
+                            <p className="text-xs text-gray-500 mt-1">High Risk Campaigns</p>
+                        </button>
+                    </div>
+
+                    {/* Data Source Summary (Kelkoo + Admedia + MaxBounty) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Kelkoo Summary - Now with LIVE API data */}
+                        <div className="bg-gradient-to-br from-cyan-900/20 to-purple-900/20 rounded-xl border border-cyan-500/20 p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="px-2 py-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded text-xs font-bold text-white">KL</div>
+                                <h3 className="text-lg font-semibold text-white">Kelkoo ({dateRangeLabel})</h3>
+                                {kelkooLoading ? (
+                                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
+                                ) : kelkooIsFallback ? (
+                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
+                                )}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        refetchKelkoo();
+                                    }}
+                                    disabled={kelkooLoading}
+                                    className="ml-auto p-1.5 rounded-lg hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
+                                    title="Refresh Kelkoo data"
+                                >
+                                    <RefreshCw className={`w-4 h-4 text-cyan-400 ${kelkooLoading ? 'animate-spin' : ''}`} />
+                                </button>
+                                {kelkooError && <span className="text-xs text-red-400">{kelkooError}</span>}
+                            </div>
+                            <div
+                                className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-cyan-900/10 rounded-lg p-2 -m-2 transition-colors"
+                                onClick={() => setDetailModal({
+                                    type: "kelkoo",
+                                    title: "Kelkoo Performance Details",
+                                    data: {
+                                        leads: liveKelkooAggregates.totalLeads,
+                                        revenue: liveKelkooAggregates.totalRevenueEur,
+                                        revenueInr: liveKelkooAggregates.totalRevenueInr,
+                                        sales: liveKelkooAggregates.totalSales,
+                                        saleValue: liveKelkooAggregates.totalSaleValueEur,
+                                        saleValueInr: liveKelkooAggregates.totalSaleValueInr,
+                                        conversionRate: liveKelkooAggregates.conversionRate,
+                                        revenuePerLead: liveKelkooAggregates.vpl,
+                                        isLive: !kelkooIsFallback,
+                                        campaigns: liveEnrichedCampaigns.filter(c => c.isKelkoo),
+                                    }
+                                })}
+                            >
+                                <div>
+                                    <p className="text-xs text-gray-500">Leads</p>
+                                    <p className="text-xl font-bold text-cyan-400">
+                                        {liveKelkooAggregates.totalLeads.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Revenue</p>
+                                    <p className="text-lg font-bold text-emerald-400">
+                                        €{liveKelkooAggregates.totalRevenueEur.toLocaleString()}
+                                    </p>
+                                    <p className="text-xs text-emerald-300/70">
+                                        ₹{liveKelkooAggregates.totalRevenueInr.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Sales</p>
+                                    <p className="text-xl font-bold text-purple-400">
+                                        {liveKelkooAggregates.totalSales}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Sale Value</p>
+                                    <p className="text-base font-semibold text-white">
+                                        €{liveKelkooAggregates.totalSaleValueEur.toLocaleString()}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        ₹{liveKelkooAggregates.totalSaleValueInr.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Conv. Rate</p>
+                                    <p className="text-base font-semibold text-white">
+                                        {safeToFixed(liveKelkooAggregates.conversionRate, 2)}%
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Value/Lead</p>
+                                    <p className="text-base font-semibold text-white">
+                                        €{safeToFixed(liveKelkooAggregates.vpl, 2)}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        ₹{safeToFixed(liveKelkooAggregates.vpl * 89.5, 2)}
+                                    </p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
+                        </div>
+
+                        {/* Admedia Summary */}
+                        <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 rounded-xl border border-amber-500/20 p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded text-xs font-bold text-white">AM</div>
+                                <h3 className="text-lg font-semibold text-white">Admedia ({dateRangeLabel})</h3>
+                                {admediaLoading ? (
+                                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
+                                ) : admediaIsFallback ? (
+                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
+                                )}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        refetchAdmedia();
+                                    }}
+                                    disabled={admediaLoading}
+                                    className="ml-auto p-1.5 rounded-lg hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                                    title="Refresh Admedia data"
+                                >
+                                    <RefreshCw className={`w-4 h-4 text-amber-400 ${admediaLoading ? 'animate-spin' : ''}`} />
+                                </button>
+                                {admediaError && <span className="text-xs text-red-400">{admediaError}</span>}
+                            </div>
+                            <div
+                                className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-amber-900/10 rounded-lg p-2 -m-2 transition-colors"
+                                onClick={() => setDetailModal({
+                                    type: "admedia",
+                                    title: "Admedia Performance Details",
+                                    data: {
+                                        leads: liveAdmediaAggregates.totalLeads,
+                                        conversions: liveAdmediaAggregates.totalConversions,
+                                        earningsUsd: liveAdmediaAggregates.totalEarningsUsd,
+                                        earningsInr: liveAdmediaAggregates.totalEarningsInr,
+                                        conversionRate: liveAdmediaAggregates.conversionRate,
+                                        cpc: liveAdmediaAggregates.cpc,
+                                        cpl: liveAdmediaAggregates.cpl,
+                                        isLive: !admediaIsFallback,
+                                        campaigns: liveEnrichedCampaigns.filter(c => c.isAdmedia),
+                                    }
+                                })}
+                            >
+                                <div>
+                                    <p className="text-xs text-gray-500">Leads</p>
+                                    <p className="text-xl font-bold text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Conversions</p>
+                                    <p className="text-xl font-bold text-emerald-400">{liveAdmediaAggregates.totalConversions.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Conv Rate</p>
+                                    <p className="text-xl font-bold text-purple-400">{safeToFixed(liveAdmediaAggregates.conversionRate, 1)}%</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Earnings</p>
+                                    <p className="text-base font-semibold text-emerald-400">${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}</p>
+                                    <p className="text-xs text-emerald-300/70">₹{liveAdmediaAggregates.totalEarningsInr.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">CPC</p>
+                                    <p className="text-base font-semibold text-white">${safeToFixed(liveAdmediaAggregates.cpc, 2)}</p>
+                                    <p className="text-xs text-gray-400">₹{safeToFixed(liveAdmediaAggregates.cpc * 83.5, 2)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">CPL</p>
+                                    <p className="text-base font-semibold text-white">${safeToFixed(liveAdmediaAggregates.cpl, 2)}</p>
+                                    <p className="text-xs text-gray-400">₹{safeToFixed(liveAdmediaAggregates.cpl * 83.5, 2)}</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
+                        </div>
+
+                        {/* MaxBounty Summary - LIVE API data */}
+                        <div className="bg-gradient-to-br from-rose-900/20 to-red-900/20 rounded-xl border border-rose-500/20 p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</div>
+                                <h3 className="text-lg font-semibold text-white">MaxBounty ({dateRangeLabel})</h3>
+                                {maxBountyLoading ? (
+                                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full animate-pulse">Loading...</span>
+                                ) : maxBountyIsFallback ? (
+                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
+                                )}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        refetchMaxBounty();
+                                    }}
+                                    disabled={maxBountyLoading}
+                                    className="ml-auto p-1.5 rounded-lg hover:bg-rose-500/20 transition-colors disabled:opacity-50"
+                                    title="Refresh MaxBounty data"
+                                >
+                                    <RefreshCw className={`w-4 h-4 text-rose-400 ${maxBountyLoading ? 'animate-spin' : ''}`} />
+                                </button>
+                                {maxBountyError && <span className="text-xs text-red-400" title={maxBountyError}>Network error</span>}
+                            </div>
+                            <div
+                                className="grid grid-cols-3 gap-4 cursor-pointer hover:bg-rose-900/10 rounded-lg p-2 -m-2 transition-colors"
+                                onClick={() => setDetailModal({
+                                    type: "maxbounty",
+                                    title: "MaxBounty Performance Details",
+                                    data: {
+                                        clicks: liveMaxBountyAggregates.clicks,
+                                        leads: liveMaxBountyAggregates.leads,
+                                        earnings: liveMaxBountyAggregates.earnings,
+                                        earningsInr: liveMaxBountyAggregates.earningsInr,
+                                        conversion: liveMaxBountyAggregates.conversion,
+                                        epc: liveMaxBountyAggregates.epc,
+                                        sales: liveMaxBountyAggregates.sales,
+                                        isLive: !maxBountyIsFallback,
+                                        campaigns: maxBountyCampaigns,
+                                    }
+                                })}
+                            >
+                                <div>
+                                    <p className="text-xs text-gray-500">Clicks</p>
+                                    <p className="text-xl font-bold text-rose-400">{liveMaxBountyAggregates.clicks.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Leads</p>
+                                    <p className="text-xl font-bold text-emerald-400">{liveMaxBountyAggregates.leads.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Conv Rate</p>
+                                    <p className="text-xl font-bold text-purple-400">{safeToFixed(liveMaxBountyAggregates.conversion, 1)}%</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Earnings</p>
+                                    <p className="text-base font-semibold text-emerald-400">${liveMaxBountyAggregates.earnings.toLocaleString()}</p>
+                                    <p className="text-xs text-emerald-300/70">₹{liveMaxBountyAggregates.earningsInr.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">EPC</p>
+                                    <p className="text-base font-semibold text-white">${safeToFixed(liveMaxBountyAggregates.epc, 2)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Sales Value</p>
+                                    <p className="text-base font-semibold text-white">${liveMaxBountyAggregates.sales.toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-3 text-center">Click metrics for detailed breakdown</p>
+                        </div>
+                    </div>
+
+                    {/* Primary KPIs */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+                        <EnhancedKPICard
+                            title="Total Clicks"
+                            value={liveSummary ? formatNumber(liveSummary.clicks.value) : formatNumber(totals.clicks)}
+                            subtitle={liveSummary ? `${formatNumber(liveSummary.impressions.value)} impr.` : `${formatNumber(totals.impressions)} impr.`}
+                            trend={liveSummary?.clicks.change_percent ? `${safeToFixed(liveSummary.clicks.change_percent, 1)}%` : "+8.2%"}
+                            trendUp={liveSummary?.clicks.change_direction === "up"}
+                            icon={<ClicksIcon />}
+                            color="primary"
+                            sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "clicks")?.data.map(d => d.value) : clicksSparkData}
+                            onClick={() => setSelectedMetric("clicks")}
+                        />
+                        <EnhancedKPICard
+                            title="Total Cost"
+                            value={liveSummary ? formatCurrency(liveSummary.cost.value) : formatCurrency(totals.cost)}
+                            subtitle={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)} avg CPC` : `Rs.${safeToFixed(totals.avgCpc, 0)} avg CPC`}
+                            trend={liveSummary?.cost.change_percent ? `${safeToFixed(liveSummary.cost.change_percent, 1)}%` : "-2.4%"}
+                            trendUp={liveSummary?.cost.change_direction === "down"}
+                            icon={<CostIcon />}
+                            color="warning"
+                            sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "cost")?.data.map(d => d.value) : costSparkData}
+                            onClick={() => setSelectedMetric("cost")}
+                        />
+                        <EnhancedKPICard
+                            title="Conversions"
+                            value={liveSummary ? formatNumber(liveSummary.conversions.value) : formatNumber(totals.conversions)}
+                            subtitle={liveSummary ? `${safeToFixed(liveSummary.conversions.value / liveSummary.clicks.value * 100, 1)}% rate` : `${safeToFixed(conversionRate, 1)}% rate`}
+                            trend={liveSummary?.conversions.change_percent ? `${safeToFixed(liveSummary.conversions.change_percent, 1)}%` : "+15.3%"}
+                            trendUp={liveSummary?.conversions.change_direction === "up"}
+                            icon={<ConversionsIcon />}
+                            color="success"
+                            sparkData={liveTrends.length > 0 ? liveTrends.find(t => t.metric === "conversions")?.data.map(d => d.value) : convSparkData}
+                            onClick={() => setSelectedMetric("conversions")}
+                        />
+                        <EnhancedKPICard
+                            title="CTR"
+                            value={liveSummary ? `${safeToFixed(liveSummary.ctr.value, 2)}%` : `${safeToFixed(totals.ctr, 2)}%`}
+                            subtitle="Above avg"
+                            trend={liveSummary?.ctr.change_percent ? `${safeToFixed(liveSummary.ctr.change_percent, 1)}%` : "+0.5%"}
+                            trendUp={liveSummary?.ctr.change_direction === "up"}
+                            icon={<CTRIcon />}
+                            color="cyan"
+                            sparkData={ctrSparkData}
+                            onClick={() => setActiveKPI("ctr")}
+                        />
+                        <EnhancedKPICard
+                            title="Avg CPC"
+                            value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)}` : `Rs.${safeToFixed(totals.avgCpc, 0)}`}
+                            subtitle="Per click"
+                            trend={liveSummary?.cpc.change_percent ? `${safeToFixed(liveSummary.cpc.change_percent, 1)}%` : "-1.2%"}
+                            trendUp={liveSummary?.cpc.change_direction === "down"}
+                            icon={<CPCIcon />}
+                            color="warning"
+                            onClick={() => setActiveKPI("cpc")}
+                        />
+                        <EnhancedKPICard
+                            title="CPA"
+                            value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpa.value, 0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
+                            subtitle="Per conversion"
+                            trend={liveSummary?.cpa.change_percent ? `${safeToFixed(liveSummary.cpa.change_percent, 1)}%` : "-3.5%"}
+                            trendUp={liveSummary?.cpa.change_direction === "down"}
+                            icon={<ConversionsIcon />}
+                            color="danger"
+                            onClick={() => setActiveKPI("cpa")}
+                        />
+                        <EnhancedKPICard
+                            title="ROAS"
+                            value={liveSummary ? `${safeToFixed(liveSummary.roas.value, 2)}x` : `${safeToFixed(avgROAS, 2)}x`}
+                            subtitle="Return on ad spend"
+                            trend={liveSummary?.roas.change_percent ? `${safeToFixed(liveSummary.roas.change_percent, 1)}%` : "+5.2%"}
+                            trendUp={liveSummary?.roas.change_direction === "up"}
+                            icon={<ROASIcon />}
+                            color="success"
+                            onClick={() => setActiveKPI("roas")}
+                        />
+                    </div>
+
+                    {/* Charts Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Main Chart */}
+                        <div className="lg:col-span-2 bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                <h2 className="text-lg font-display font-semibold text-white">Performance Trends</h2>
+                                <div className="flex items-center gap-2">
+                                    {(["clicks", "cost", "conversions"] as const).map((metric, i) => (
+                                        <button
+                                            key={metric}
+                                            onClick={() => setSelectedMetric(metric)}
+                                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedMetric === metric
+                                                ? "bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg shadow-purple-500/25"
+                                                : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
+                                                }`}
+                                        >
+                                            <span className="hidden md:inline">{metric.charAt(0).toUpperCase() + metric.slice(1)}</span>
+                                            <span className="md:hidden">{i + 1}</span>
+                                        </button>
                                     ))}
                                 </div>
                             </div>
+                            <MetricsAreaChart
+                                data={trendData}
+                                metrics={[{ key: selectedMetric, name: selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1), color: "#8b5cf6" }]}
+                                height={300}
+                                showAverage
+                            />
+                        </div>
+
+                        {/* Account Breakdown Pie */}
+                        <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
+                            <h2 className="text-lg font-display font-semibold text-white mb-4">Cost by Account</h2>
+                            <MetricsPieChart data={accountData} height={240} innerRadius={60} showLabels={false} />
+                            <div className="mt-4 space-y-2">
+                                {accountData.map((acc, i) => (
+                                    <div key={acc.name} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-3 h-3 rounded-full ${i === 0 ? "bg-purple-500" : i === 1 ? "bg-cyan-500" : "bg-emerald-500"}`} />
+                                            <span className="text-gray-300">{acc.name}</span>
+                                        </div>
+                                        <span className="font-medium text-white">{formatCurrency(acc.value)}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* Detail Modal for expanded views */}
-            {detailModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDetailModal(null)}>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-                            <h2 className="text-xl font-display font-bold text-white">{detailModal.title}</h2>
-                            <button onClick={() => setDetailModal(null)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                    {/* Secondary Charts Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Top Performers */}
+                        <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
+                            <h2 className="text-lg font-display font-semibold text-white mb-4 flex items-center gap-2">
+                                <span className="text-emerald-400">Top</span> Performers by ROAS
+                            </h2>
+                            <div className="space-y-3">
+                                {topPerformers.slice(0, 5).map((camp, i) => (
+                                    <button
+                                        key={camp.id}
+                                        onClick={() => setSelectedCampaign(camp)}
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/50 transition-colors text-left border border-transparent hover:border-gray-700"
+                                    >
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${i === 0 ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg shadow-orange-500/30" :
+                                            i === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800" :
+                                                i === 2 ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white" :
+                                                    "bg-gray-700 text-gray-300"
+                                            }`}>
+                                            {i + 1}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-white truncate">{camp.name}</p>
+                                            <p className="text-xs text-gray-500">{safeToFixed(camp.conversions, 0)} conv @ Rs.{safeToFixed(camp.cpa, 0)} CPA</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-emerald-400">{safeToFixed(camp.roas, 2)}x</p>
+                                            <p className="text-xs text-gray-500">ROAS</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="p-6">
-                            {detailModal.type === "kelkoo" && (
-                                <>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="px-2 py-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded text-xs font-bold text-white">KL</span>
-                                        {(detailModal.data.isLive as boolean) ? (
-                                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
-                                        ) : (
-                                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
-                                        )}
-                                    </div>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Total Leads</p>
-                                            <p className="text-2xl font-bold text-cyan-400">{(detailModal.data.leads as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Lead Revenue (EUR)</p>
-                                            <p className="text-2xl font-bold text-emerald-400">€{(detailModal.data.revenue as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Lead Revenue (INR)</p>
-                                            <p className="text-2xl font-bold text-emerald-400">Rs.{Math.round(detailModal.data.revenueInr as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Sales</p>
-                                            <p className="text-2xl font-bold text-purple-400">{(detailModal.data.sales as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Sale Value (EUR)</p>
-                                            <p className="text-2xl font-bold text-white">€{(detailModal.data.saleValue as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Sale Value (INR)</p>
-                                            <p className="text-2xl font-bold text-white">Rs.{Math.round(detailModal.data.saleValueInr as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Conversion Rate</p>
-                                            <p className="text-2xl font-bold text-amber-400">{safeToFixed(detailModal.data.conversionRate as number, 2)}%</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Value Per Lead</p>
-                                            <p className="text-2xl font-bold text-white">€{safeToFixed(detailModal.data.revenuePerLead as number, 2)}</p>
-                                        </div>
-                                    </div>
-
-                                    <h3 className="text-sm font-semibold text-white mb-3">KL Campaigns Performance</h3>
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                        {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
-                                            <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
-                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">Cost: {formatCurrency(camp.cost)} | Clicks: {camp.clicks.toLocaleString()}</p>
+                        {/* Account Performance Cards */}
+                        <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
+                            <h2 className="text-lg font-display font-semibold text-white mb-4">Account Performance</h2>
+                            <div className="space-y-4">
+                                {accountBreakdown.map((acc, i) => (
+                                    <div key={acc.name} className="p-4 rounded-xl bg-gray-800/30 border border-gray-700/50 hover:border-gray-600 transition-colors">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white ${i === 0 ? "bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30" :
+                                                    i === 1 ? "bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-lg shadow-cyan-500/30" :
+                                                        "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30"
+                                                    }`}>
+                                                    {acc.name.charAt(0)}
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-medium text-cyan-400">{camp.kelkooLeads || 0} leads</p>
-                                                    <p className="text-xs text-emerald-400">Rs.{(camp.kelkooRevenueInr || 0).toLocaleString()}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className={`text-sm font-bold ${(camp.actualROAS || 0) >= 1 ? "text-emerald-400" : "text-red-400"}`}>
-                                                        {safeToFixed(camp.actualROAS || 0, 2)}x
-                                                    </p>
-                                                    <p className={`text-xs ${(camp.profitability || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                                                        Rs.{(camp.profitability || 0).toLocaleString()}
-                                                    </p>
+                                                <div>
+                                                    <p className="font-semibold text-white">{acc.name}</p>
+                                                    {/* <p className="text-xs text-gray-500">{acc.campaigns} campaigns</p> */}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
-                                        <button
-                                            onClick={() => refetchKelkoo()}
-                                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                                        >
-                                            <RefreshCw className="w-4 h-4" />
-                                            Refresh Kelkoo Data
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-
-                            {detailModal.type === "admedia" && (
-                                <>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded text-xs font-bold text-white">AM</span>
-                                        {(detailModal.data.isLive as boolean) ? (
-                                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
-                                        ) : (
-                                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Total Leads</p>
-                                            <p className="text-2xl font-bold text-amber-400">{(detailModal.data.leads as number).toLocaleString()}</p>
+                                            <p className="text-lg font-bold text-white">{formatCurrency(acc.cost)}</p>
                                         </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Conversions</p>
-                                            <p className="text-2xl font-bold text-emerald-400">{(detailModal.data.conversions as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Earnings (USD)</p>
-                                            <p className="text-2xl font-bold text-emerald-400">${(detailModal.data.earningsUsd as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Earnings (INR)</p>
-                                            <p className="text-2xl font-bold text-emerald-400">₹{Math.round(detailModal.data.earningsInr as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Conv. Rate</p>
-                                            <p className="text-2xl font-bold text-purple-400">{safeToFixed(detailModal.data.conversionRate as number, 1)}%</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">CPC</p>
-                                            <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.cpc as number, 2)}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">CPL</p>
-                                            <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.cpl as number, 2)}</p>
-                                        </div>
-                                    </div>
-
-                                    <h3 className="text-sm font-semibold text-white mb-3">AM Campaigns Performance</h3>
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                        {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
-                                            <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
-                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">Cost: {formatCurrency(camp.cost)} | Clicks: {camp.clicks.toLocaleString()}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-medium text-amber-400">{camp.admediaLeads || 0} leads</p>
-                                                    <p className="text-xs text-emerald-400">₹{(camp.admediaEarningsInr || 0).toLocaleString()}</p>
-                                                </div>
+                                        <ProgressBar
+                                            value={acc.cost}
+                                            max={totals.cost}
+                                            color={i === 0 ? "primary" : i === 1 ? "warning" : "success"}
+                                            size="sm"
+                                            showValue={false}
+                                        />
+                                        <div className="grid grid-cols-3 gap-4 text-sm mt-3">
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Clicks</p>
+                                                <p className="font-medium text-white">{formatNumber(acc.clicks)}</p>
                                             </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
-                                        <button
-                                            onClick={() => refetchAdmedia()}
-                                            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                                        >
-                                            <RefreshCw className="w-4 h-4" />
-                                            Refresh Admedia Data
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-
-                            {detailModal.type === "maxbounty" && (
-                                <>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</span>
-                                        {(detailModal.data.isLive as boolean) ? (
-                                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
-                                        ) : (
-                                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Total Clicks</p>
-                                            <p className="text-2xl font-bold text-rose-400">{(detailModal.data.clicks as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Leads</p>
-                                            <p className="text-2xl font-bold text-emerald-400">{(detailModal.data.leads as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Earnings (USD)</p>
-                                            <p className="text-2xl font-bold text-emerald-400">${(detailModal.data.earnings as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Earnings (INR)</p>
-                                            <p className="text-2xl font-bold text-emerald-400">₹{Math.round(detailModal.data.earningsInr as number).toLocaleString()}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Conv. Rate</p>
-                                            <p className="text-2xl font-bold text-purple-400">{safeToFixed(detailModal.data.conversion as number, 1)}%</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">EPC</p>
-                                            <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.epc as number, 2)}</p>
-                                        </div>
-                                        <div className="bg-gray-800/50 rounded-xl p-4">
-                                            <p className="text-xs text-gray-500">Sales Value</p>
-                                            <p className="text-2xl font-bold text-white">${(detailModal.data.sales as number).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-
-                                    <h3 className="text-sm font-semibold text-white mb-3">MaxBounty Campaigns Performance</h3>
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                        {(detailModal.data.campaigns as { name: string; campaign_id: number; clicks: number; leads: number; earnings: number; conversion: number; epc: number; sales: number }[]).map((camp, i) => (
-                                            <div key={camp.campaign_id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
-                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">Clicks: {camp.clicks.toLocaleString()} | Conv: {safeToFixed(camp.conversion, 1)}%</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-medium text-rose-400">{camp.leads} leads</p>
-                                                    <p className="text-xs text-emerald-400">${camp.earnings.toLocaleString()}</p>
-                                                </div>
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Conversions</p>
+                                                <p className="font-medium text-white">{formatNumber(acc.conversions)}</p>
                                             </div>
-                                        ))}
+                                            <div>
+                                                <p className="text-gray-500 text-xs">CPA</p>
+                                                <p className="font-medium text-white">Rs.{safeToFixed(acc.cost / acc.conversions, 0)}</p>
+                                            </div>
+                                        </div>
                                     </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
 
-                                    <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
-                                        <button
-                                            onClick={() => refetchMaxBounty()}
-                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                                        >
-                                            <RefreshCw className="w-4 h-4" />
-                                            Refresh MaxBounty Data
-                                        </button>
+                    {/* Top Campaigns Bar Chart */}
+                    <div className="bg-gray-900/50 rounded-2xl border border-gray-700/50 p-6">
+                        <h2 className="text-lg font-display font-semibold text-white mb-4">Top 10 Campaigns by Spend</h2>
+                        <MetricsBarChart
+                            data={campaignCostData}
+                            metrics={[
+                                { key: "cost", name: "Cost", color: "#f59e0b" },
+                                { key: "conversions", name: "Conversions", color: "#22c55e" }
+                            ]}
+                            height={300}
+                            format="currency"
+                        />
+                    </div>
+
+                    {/* Campaign Table */}
+                    <div className="space-y-6">
+                        {/* Network Filters & Comparison - Inline with Table */}
+                        <div className="relative z-10 flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between bg-gray-900/80 rounded-2xl p-4 border border-gray-700/50 backdrop-blur-sm">
+                            {/* Network Filter Buttons */}
+                            <div className="flex items-center gap-2 bg-gray-800/70 rounded-xl p-3 border border-gray-600/50">
+                                <span className="text-xs text-gray-500 mr-2">Network:</span>
+                                {([
+                                    { key: "all", label: "All", color: "bg-gray-600", count: liveEnrichedCampaigns.length },
+                                    { key: "kelkoo", label: "Kelkoo", color: "bg-gradient-to-r from-purple-500 to-cyan-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isKelkoo).length },
+                                    { key: "admedia", label: "Admedia", color: "bg-gradient-to-r from-amber-500 to-orange-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isAdmedia).length },
+                                    { key: "maxbounty", label: "MaxBounty", color: "bg-gradient-to-r from-rose-500 to-red-500", count: liveEnrichedCampaigns.filter(c => detectNetwork(c.name).isMaxBounty).length },
+                                ] as const).map(({ key, label, color, count }) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setNetworkFilter(key)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${networkFilter === key
+                                            ? `${color} text-white shadow-lg`
+                                            : "bg-gray-700/50 text-gray-400 hover:bg-gray-700 hover:text-white"
+                                            }`}
+                                    >
+                                        {label}
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${networkFilter === key ? "bg-white/20" : "bg-gray-600"}`}>{count}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Network ROAS Comparison */}
+                            <div className="flex gap-3 flex-wrap">
+                                <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "kelkoo" ? "bg-purple-500/30 border-purple-500/60 shadow-purple-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-purple-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "kelkoo" ? "all" : "kelkoo")}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-white">KL</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-base font-bold ${networkComparison.kelkoo.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.kelkoo.roas, 2)}x</p>
+                                            <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.kelkoo.revenueInr / 1000, 0)}k rev</p>
+                                        </div>
                                     </div>
-                                </>
-                            )}
+                                </div>
+                                <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "admedia" ? "bg-amber-500/30 border-amber-500/60 shadow-amber-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-amber-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "admedia" ? "all" : "admedia")}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-white">AM</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-base font-bold ${networkComparison.admedia.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.admedia.roas, 2)}x</p>
+                                            <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.admedia.revenueInr / 1000, 0)}k rev</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={`px-4 py-2.5 rounded-xl border cursor-pointer transition-all shadow-lg ${networkFilter === "maxbounty" ? "bg-rose-500/30 border-rose-500/60 shadow-rose-500/20" : "bg-gray-800/50 border-gray-600/50 hover:border-rose-500/40 hover:bg-gray-800/70"}`} onClick={() => setNetworkFilter(networkFilter === "maxbounty" ? "all" : "maxbounty")}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-white">MB</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-base font-bold ${networkComparison.maxbounty.roas >= 1 ? "text-emerald-400" : "text-red-400"}`}>{safeToFixed(networkComparison.maxbounty.roas, 2)}x</p>
+                                            <p className="text-[10px] text-gray-400">₹{safeToFixed(networkComparison.maxbounty.revenueInr / 1000, 0)}k rev</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                            {detailModal.type === "health" && (
-                                <>
+                        <div className="relative z-0">
+                            <DataTable
+                                data={filteredCampaigns}
+                                columns={campaignColumns}
+                                title={`${networkFilter === "all" ? "All" : networkFilter.charAt(0).toUpperCase() + networkFilter.slice(1)} Campaigns (${filteredCampaigns.length}${kelkooLoading || admediaLoading || maxBountyLoading ? " - loading..." : ""})`}
+                                searchKeys={["name", "account"]}
+                                pageSize={10}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Campaign Modal */}
+                    <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
+
+                    {/* KPI Analytics Modal */}
+                    {activeKPI && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setActiveKPI(null)}>
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                                <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+                                    <h2 className="text-xl font-display font-bold text-white">
+                                        {activeKPI === "ctr" && "Click-Through Rate Analysis"}
+                                        {activeKPI === "cpc" && "Cost Per Click Analysis"}
+                                        {activeKPI === "cpa" && "Cost Per Acquisition Analysis"}
+                                        {activeKPI === "roas" && "Return on Ad Spend Analysis"}
+                                    </h2>
+                                    <button onClick={() => setActiveKPI(null)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="p-6">
                                     <div className="text-center mb-6">
-                                        <p className="text-5xl font-bold text-purple-400">{detailModal.data.score as number}</p>
-                                        <p className="text-sm text-gray-400 mt-1">Average Health Score</p>
-                                    </div>
-                                    <div className="bg-gray-800/50 rounded-xl p-4 mb-4">
-                                        <p className="text-sm text-gray-400">
-                                            <span className="text-emerald-400 font-semibold">{detailModal.data.campaigns as number}</span> campaigns have health scores above 70
+                                        <p className="text-5xl font-display font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                                            {activeKPI === "ctr" && `${safeToFixed(totals.ctr, 2)}%`}
+                                            {activeKPI === "cpc" && `Rs.${safeToFixed(totals.avgCpc, 0)}`}
+                                            {activeKPI === "cpa" && `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
+                                            {activeKPI === "roas" && `${safeToFixed(avgROAS, 2)}x`}
                                         </p>
                                     </div>
-                                    <h3 className="text-sm font-semibold text-white mb-3">Top Healthy Campaigns</h3>
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                        {(detailModal.data.topCampaigns as Campaign[]).map((camp, i) => (
-                                            <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
-                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                </div>
-                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${(camp.healthScore || 0) >= 70 ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
-                                                    {camp.healthScore || 0}
-                                                </span>
-                                            </div>
-                                        ))}
+                                    <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
+                                        <h3 className="text-sm font-semibold text-white mb-3">Key Insights</h3>
+                                        <ul className="space-y-2 text-sm text-gray-300">
+                                            {activeKPI === "ctr" && (
+                                                <>
+                                                    <li>- Average CTR of {safeToFixed(totals.ctr, 2)}% is above industry average</li>
+                                                    <li>- Best performer: {topPerformers[0]?.name} at {safeToFixed(topPerformers[0]?.ctr, 2)}%</li>
+                                                    <li>- {liveEnrichedCampaigns.filter(c => c.ctr > 5).length} campaigns have CTR above 5%</li>
+                                                </>
+                                            )}
+                                            {activeKPI === "cpc" && (
+                                                <>
+                                                    <li>- Average CPC of Rs.{safeToFixed(totals.avgCpc, 0)} across {liveEnrichedCampaigns.length} campaigns</li>
+                                                    <li>- Total clicks: {totals.clicks.toLocaleString()}</li>
+                                                    <li>- Consider bid adjustments for high CPC campaigns</li>
+                                                </>
+                                            )}
+                                            {activeKPI === "cpa" && (
+                                                <>
+                                                    <li>- Average CPA: Rs.{safeToFixed(totals.cost / totals.conversions, 0)} per conversion</li>
+                                                    <li>- Total conversions: {totals.conversions.toLocaleString()}</li>
+                                                    <li>- {liveEnrichedCampaigns.filter(c => c.conversionRate > 50).length} high-converting campaigns</li>
+                                                </>
+                                            )}
+                                            {activeKPI === "roas" && (
+                                                <>
+                                                    <li>- Average ROAS: {safeToFixed(avgROAS, 2)}x return on ad spend</li>
+                                                    <li>- {liveEnrichedCampaigns.filter(c => c.conversions > 200).length} campaigns with 200+ conversions</li>
+                                                    <li>- Total ad spend: {formatCurrency(totals.cost)}</li>
+                                                </>
+                                            )}
+                                        </ul>
                                     </div>
-                                </>
-                            )}
-
-                            {detailModal.type === "performers" && (
-                                <>
-                                    <div className="text-center mb-6">
-                                        <p className="text-5xl font-bold text-emerald-400">{detailModal.data.count as number}</p>
-                                        <p className="text-sm text-gray-400 mt-1">High Performing Campaigns (A/B Rated)</p>
-                                    </div>
-                                    <h3 className="text-sm font-semibold text-white mb-3">A/B Rated Campaigns</h3>
-                                    <div className="space-y-2 max-h-[350px] overflow-y-auto">
-                                        {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
-                                            <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
-                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
-                                                </div>
-                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${camp.efficiencyRating === "A" ? "bg-emerald-500/20 text-emerald-400" : "bg-cyan-500/20 text-cyan-400"}`}>
-                                                    {camp.efficiencyRating}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-
-                            {detailModal.type === "attention" && (
-                                <>
-                                    <div className="text-center mb-6">
-                                        <p className="text-5xl font-bold text-amber-400">{detailModal.data.count as number}</p>
-                                        <p className="text-sm text-gray-400 mt-1">Campaigns Needing Attention (C/D Rated)</p>
-                                    </div>
-                                    <h3 className="text-sm font-semibold text-white mb-3">C/D Rated Campaigns</h3>
-                                    <div className="space-y-2 max-h-[350px] overflow-y-auto">
-                                        {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
-                                            <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
-                                                <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                    <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
-                                                </div>
-                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${camp.efficiencyRating === "C" ? "bg-amber-500/20 text-amber-400" : "bg-orange-500/20 text-orange-400"}`}>
-                                                    {camp.efficiencyRating}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-
-                            {detailModal.type === "risk" && (
-                                <>
-                                    <div className="text-center mb-6">
-                                        <p className="text-5xl font-bold text-rose-400">{detailModal.data.count as number}</p>
-                                        <p className="text-sm text-gray-400 mt-1">At Risk Campaigns (F Rated)</p>
-                                    </div>
-                                    <h3 className="text-sm font-semibold text-white mb-3">F Rated Campaigns - Immediate Action Required</h3>
-                                    <div className="space-y-2 max-h-[350px] overflow-y-auto">
-                                        {(detailModal.data.campaigns as Campaign[]).length === 0 ? (
-                                            <div className="text-center py-8 text-gray-500">
-                                                <p>🎉 No campaigns at risk!</p>
-                                                <p className="text-xs mt-1">All campaigns are performing well</p>
-                                            </div>
-                                        ) : (
-                                            (detailModal.data.campaigns as Campaign[]).map((camp, i) => (
-                                                <div key={camp.id} className="flex items-center gap-3 p-3 bg-rose-900/20 rounded-lg border border-rose-500/20">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-white mb-3">Top 5 Campaigns</h3>
+                                        <div className="space-y-2">
+                                            {topPerformers.slice(0, 5).map((camp, i) => (
+                                                <div key={camp.id} className="flex items-center gap-3">
                                                     <span className="text-xs text-gray-500 w-6">{i + 1}</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-white truncate">{camp.name}</p>
-                                                        <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
-                                                    </div>
-                                                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-400">
-                                                        F
+                                                    <span className="text-sm text-gray-300 flex-1 truncate">{camp.name}</span>
+                                                    <span className="text-sm font-medium text-white">
+                                                        {activeKPI === "ctr" ? `${safeToFixed(camp.ctr, 2)}%` :
+                                                            activeKPI === "cpc" ? `Rs.${safeToFixed(camp.avgCpc, 0)}` :
+                                                                activeKPI === "cpa" ? `Rs.${safeToFixed(camp.cost / Math.max(camp.conversions, 1), 0)}` :
+                                                                    `${safeToFixed(camp.conversions * 175 / camp.cost, 2)}x`}
                                                     </span>
                                                 </div>
-                                            ))
-                                        )}
+                                            ))}
+                                        </div>
                                     </div>
-                                </>
-                            )}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    )}
+
+                    {/* Detail Modal for expanded views */}
+                    {detailModal && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDetailModal(null)}>
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                                <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+                                    <h2 className="text-xl font-display font-bold text-white">{detailModal.title}</h2>
+                                    <button onClick={() => setDetailModal(null)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="p-6">
+                                    {detailModal.type === "kelkoo" && (
+                                        <>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="px-2 py-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded text-xs font-bold text-white">KL</span>
+                                                {(detailModal.data.isLive as boolean) ? (
+                                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Total Leads</p>
+                                                    <p className="text-2xl font-bold text-cyan-400">{(detailModal.data.leads as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Lead Revenue (EUR)</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">€{(detailModal.data.revenue as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Lead Revenue (INR)</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">Rs.{Math.round(detailModal.data.revenueInr as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Sales</p>
+                                                    <p className="text-2xl font-bold text-purple-400">{(detailModal.data.sales as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Sale Value (EUR)</p>
+                                                    <p className="text-2xl font-bold text-white">€{(detailModal.data.saleValue as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Sale Value (INR)</p>
+                                                    <p className="text-2xl font-bold text-white">Rs.{Math.round(detailModal.data.saleValueInr as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Conversion Rate</p>
+                                                    <p className="text-2xl font-bold text-amber-400">{safeToFixed(detailModal.data.conversionRate as number, 2)}%</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Value Per Lead</p>
+                                                    <p className="text-2xl font-bold text-white">€{safeToFixed(detailModal.data.revenuePerLead as number, 2)}</p>
+                                                </div>
+                                            </div>
+
+                                            <h3 className="text-sm font-semibold text-white mb-3">KL Campaigns Performance</h3>
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
+                                                    <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
+                                                        <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                            <p className="text-xs text-gray-500">Cost: {formatCurrency(camp.cost)} | Clicks: {camp.clicks.toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-sm font-medium text-cyan-400">{camp.kelkooLeads || 0} leads</p>
+                                                            <p className="text-xs text-emerald-400">Rs.{(camp.kelkooRevenueInr || 0).toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className={`text-sm font-bold ${(camp.actualROAS || 0) >= 1 ? "text-emerald-400" : "text-red-400"}`}>
+                                                                {safeToFixed(camp.actualROAS || 0, 2)}x
+                                                            </p>
+                                                            <p className={`text-xs ${(camp.profitability || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                                                Rs.{(camp.profitability || 0).toLocaleString()}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                                                <button
+                                                    onClick={() => refetchKelkoo()}
+                                                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                    Refresh Kelkoo Data
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {detailModal.type === "admedia" && (
+                                        <>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded text-xs font-bold text-white">AM</span>
+                                                {(detailModal.data.isLive as boolean) ? (
+                                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Total Leads</p>
+                                                    <p className="text-2xl font-bold text-amber-400">{(detailModal.data.leads as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Conversions</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">{(detailModal.data.conversions as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Earnings (USD)</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">${(detailModal.data.earningsUsd as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Earnings (INR)</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">₹{Math.round(detailModal.data.earningsInr as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Conv. Rate</p>
+                                                    <p className="text-2xl font-bold text-purple-400">{safeToFixed(detailModal.data.conversionRate as number, 1)}%</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">CPC</p>
+                                                    <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.cpc as number, 2)}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">CPL</p>
+                                                    <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.cpl as number, 2)}</p>
+                                                </div>
+                                            </div>
+
+                                            <h3 className="text-sm font-semibold text-white mb-3">AM Campaigns Performance</h3>
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
+                                                    <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
+                                                        <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                            <p className="text-xs text-gray-500">Cost: {formatCurrency(camp.cost)} | Clicks: {camp.clicks.toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-sm font-medium text-amber-400">{camp.admediaLeads || 0} leads</p>
+                                                            <p className="text-xs text-emerald-400">₹{(camp.admediaEarningsInr || 0).toLocaleString()}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                                                <button
+                                                    onClick={() => refetchAdmedia()}
+                                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                    Refresh Admedia Data
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {detailModal.type === "maxbounty" && (
+                                        <>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="px-2 py-1 bg-gradient-to-r from-rose-500 to-red-500 rounded text-xs font-bold text-white">MB</span>
+                                                {(detailModal.data.isLive as boolean) ? (
+                                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live API Data</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Cached Data</span>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Total Clicks</p>
+                                                    <p className="text-2xl font-bold text-rose-400">{(detailModal.data.clicks as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Leads</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">{(detailModal.data.leads as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Earnings (USD)</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">${(detailModal.data.earnings as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Earnings (INR)</p>
+                                                    <p className="text-2xl font-bold text-emerald-400">₹{Math.round(detailModal.data.earningsInr as number).toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Conv. Rate</p>
+                                                    <p className="text-2xl font-bold text-purple-400">{safeToFixed(detailModal.data.conversion as number, 1)}%</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">EPC</p>
+                                                    <p className="text-2xl font-bold text-white">${safeToFixed(detailModal.data.epc as number, 2)}</p>
+                                                </div>
+                                                <div className="bg-gray-800/50 rounded-xl p-4">
+                                                    <p className="text-xs text-gray-500">Sales Value</p>
+                                                    <p className="text-2xl font-bold text-white">${(detailModal.data.sales as number).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+
+                                            <h3 className="text-sm font-semibold text-white mb-3">MaxBounty Campaigns Performance</h3>
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                {(detailModal.data.campaigns as { name: string; campaign_id: number; clicks: number; leads: number; earnings: number; conversion: number; epc: number; sales: number }[]).map((camp, i) => (
+                                                    <div key={camp.campaign_id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors">
+                                                        <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                            <p className="text-xs text-gray-500">Clicks: {camp.clicks.toLocaleString()} | Conv: {safeToFixed(camp.conversion, 1)}%</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-sm font-medium text-rose-400">{camp.leads} leads</p>
+                                                            <p className="text-xs text-emerald-400">${camp.earnings.toLocaleString()}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="mt-4 pt-4 border-t border-gray-700 flex justify-end">
+                                                <button
+                                                    onClick={() => refetchMaxBounty()}
+                                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                    Refresh MaxBounty Data
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {detailModal.type === "health" && (
+                                        <>
+                                            <div className="text-center mb-6">
+                                                <p className="text-5xl font-bold text-purple-400">{detailModal.data.score as number}</p>
+                                                <p className="text-sm text-gray-400 mt-1">Average Health Score</p>
+                                            </div>
+                                            <div className="bg-gray-800/50 rounded-xl p-4 mb-4">
+                                                <p className="text-sm text-gray-400">
+                                                    <span className="text-emerald-400 font-semibold">{detailModal.data.campaigns as number}</span> campaigns have health scores above 70
+                                                </p>
+                                            </div>
+                                            <h3 className="text-sm font-semibold text-white mb-3">Top Healthy Campaigns</h3>
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                {(detailModal.data.topCampaigns as Campaign[]).map((camp, i) => (
+                                                    <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
+                                                        <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                        </div>
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${(camp.healthScore || 0) >= 70 ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
+                                                            {camp.healthScore || 0}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {detailModal.type === "performers" && (
+                                        <>
+                                            <div className="text-center mb-6">
+                                                <p className="text-5xl font-bold text-emerald-400">{detailModal.data.count as number}</p>
+                                                <p className="text-sm text-gray-400 mt-1">High Performing Campaigns (A/B Rated)</p>
+                                            </div>
+                                            <h3 className="text-sm font-semibold text-white mb-3">A/B Rated Campaigns</h3>
+                                            <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                                                {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
+                                                    <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
+                                                        <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                            <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
+                                                        </div>
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${camp.efficiencyRating === "A" ? "bg-emerald-500/20 text-emerald-400" : "bg-cyan-500/20 text-cyan-400"}`}>
+                                                            {camp.efficiencyRating}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {detailModal.type === "attention" && (
+                                        <>
+                                            <div className="text-center mb-6">
+                                                <p className="text-5xl font-bold text-amber-400">{detailModal.data.count as number}</p>
+                                                <p className="text-sm text-gray-400 mt-1">Campaigns Needing Attention (C/D Rated)</p>
+                                            </div>
+                                            <h3 className="text-sm font-semibold text-white mb-3">C/D Rated Campaigns</h3>
+                                            <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                                                {(detailModal.data.campaigns as Campaign[]).map((camp, i) => (
+                                                    <div key={camp.id} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
+                                                        <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                            <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
+                                                        </div>
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${camp.efficiencyRating === "C" ? "bg-amber-500/20 text-amber-400" : "bg-orange-500/20 text-orange-400"}`}>
+                                                            {camp.efficiencyRating}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {detailModal.type === "risk" && (
+                                        <>
+                                            <div className="text-center mb-6">
+                                                <p className="text-5xl font-bold text-rose-400">{detailModal.data.count as number}</p>
+                                                <p className="text-sm text-gray-400 mt-1">At Risk Campaigns (F Rated)</p>
+                                            </div>
+                                            <h3 className="text-sm font-semibold text-white mb-3">F Rated Campaigns - Immediate Action Required</h3>
+                                            <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                                                {(detailModal.data.campaigns as Campaign[]).length === 0 ? (
+                                                    <div className="text-center py-8 text-gray-500">
+                                                        <p>🎉 No campaigns at risk!</p>
+                                                        <p className="text-xs mt-1">All campaigns are performing well</p>
+                                                    </div>
+                                                ) : (
+                                                    (detailModal.data.campaigns as Campaign[]).map((camp, i) => (
+                                                        <div key={camp.id} className="flex items-center gap-3 p-3 bg-rose-900/20 rounded-lg border border-rose-500/20">
+                                                            <span className="text-xs text-gray-500 w-6">{i + 1}</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-white truncate">{camp.name}</p>
+                                                                <p className="text-xs text-gray-500">CTR: {safeToFixed(camp.ctr, 2)}% | Conv: {safeToFixed(camp.conversionRate, 1)}%</p>
+                                                            </div>
+                                                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-400">
+                                                                F
+                                                            </span>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </>
             )}
 
             {/* Command Palette */}
@@ -2513,7 +2530,6 @@ export default function DashboardPage() {
                 onClose={() => setShowCommandPalette(false)}
                 onExport={handleExport}
                 onRefresh={handleRefresh}
-                onToggleTheme={handleToggleTheme}
                 onSearch={handleFocusSearch}
                 onSwitchMetric={handleSwitchMetric}
             />

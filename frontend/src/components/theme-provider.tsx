@@ -1,68 +1,36 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
 
-type Theme = "light" | "dark" | "system";
+// Enforce Dark Mode Only
+type Theme = "dark";
 
 interface ThemeContextType {
     theme: Theme;
-    setTheme: (theme: Theme) => void;
-    resolvedTheme: "light" | "dark";
+    setTheme: (theme: any) => void; // Accept any but do nothing
+    resolvedTheme: "dark";
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+// Default context value
+const ThemeContext = createContext<ThemeContextType>({
+    theme: "dark",
+    setTheme: () => { }, // No-op
+    resolvedTheme: "dark",
+});
 
 export function useTheme() {
-    const context = useContext(ThemeContext);
-    if (!context) {
-        throw new Error("useTheme must be used within a ThemeProvider");
-    }
-    return context;
+    return useContext(ThemeContext);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>("system");
-    const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
-    const [mounted, setMounted] = useState(false);
+    // This component now purely enforces dark mode.
+    // It does NOT touch window.document.documentElement (html tag)
+    // because that is already handled in layout.tsx with className="dark".
+    // We strictly return "dark" for any consumers of useTheme().
 
-    useEffect(() => {
-        setMounted(true);
-        const stored = localStorage.getItem("theme") as Theme | null;
-        if (stored) {
-            setThemeState(stored);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!mounted) return;
-
-        const root = window.document.documentElement;
-        root.classList.remove("light", "dark");
-
-        let resolved: "light" | "dark";
-        if (theme === "system") {
-            resolved = window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-        } else {
-            resolved = theme;
-        }
-
-        root.classList.add(resolved);
-        setResolvedTheme(resolved);
-    }, [theme, mounted]);
-
-    const setTheme = (newTheme: Theme) => {
-        setThemeState(newTheme);
-        localStorage.setItem("theme", newTheme);
-    };
-
-    // Always provide context, but wrap in dark class before mount
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
-            <div className={mounted ? "" : "dark"}>
-                {children}
-            </div>
+        <ThemeContext.Provider value={{ theme: "dark", setTheme: () => { }, resolvedTheme: "dark" }}>
+            {children}
         </ThemeContext.Provider>
     );
 }

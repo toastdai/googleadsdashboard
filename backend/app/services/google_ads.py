@@ -273,8 +273,7 @@ class GoogleAdsService:
         query = f"""
             SELECT
                 segments.date,
-                segments.device,
-                segments.ad_network_type,
+                segments.date,
                 campaign.id,
                 campaign.name,
                 metrics.impressions,
@@ -289,13 +288,18 @@ class GoogleAdsService:
         """
         
         metrics = []
-        response = ga_service.search(customer_id=customer_id, query=query)
+        # Offload blocking API call to thread pool
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None, 
+            lambda: ga_service.search(customer_id=customer_id, query=query)
+        )
         
         for row in response:
             metrics.append({
                 "date": row.segments.date,
-                "device": row.segments.device.name,
-                "network": row.segments.ad_network_type.name,
+                "device": "UNSPECIFIED",
+                "network": "UNSPECIFIED",
                 "google_campaign_id": str(row.campaign.id),
                 "campaign_name": row.campaign.name,
                 "impressions": row.metrics.impressions,
