@@ -631,7 +631,8 @@ export default function DashboardPage() {
         loading: liveLoading,
         isFetchingLive,
         dataSource,
-        refetchLive
+        refetchLive,
+        error
     } = useDashboardData(dateRange.start, dateRange.end);
 
     // Fetch Partner Data dynamically from API (Legacy/Partner)
