@@ -350,6 +350,9 @@ async def fetch_live_data(
         
         if not child_accounts:
             raise HTTPException(status_code=400, detail="No child accounts found under manager")
+            
+        print(f"DEBUG LIVE FETCH: Found {len(child_accounts)} child accounts under manager {manager_id}")
+        print(f"DEBUG LIVE FETCH: Date Range: {start} to {end}")
         
         # Aggregate metrics from all accounts
         all_campaigns = {}
@@ -394,7 +397,12 @@ async def fetch_live_data(
         
         async def safe_fetch(acc):
             async with semaphore:
-                return await fetch_account_metrics(acc)
+                res = await fetch_account_metrics(acc)
+                if isinstance(res, list):
+                    print(f"DEBUG LIVE FETCH: Account {acc['id']} returned {len(res)} rows")
+                else:
+                    print(f"DEBUG LIVE FETCH: Account {acc['id']} FAILED: {res.get('error')}")
+                return res
 
         results_list = await asyncio.gather(*[safe_fetch(acc) for acc in child_accounts])
         
