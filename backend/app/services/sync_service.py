@@ -38,7 +38,7 @@ class SyncService:
         child_accounts = await self._get_child_accounts(manager_customer_id, refresh_token)
         
         # 2. Parallel Syncing with Semaphore
-        semaphore = asyncio.Semaphore(5)  # Sync 5 accounts at a time
+        semaphore = asyncio.Semaphore(20)  # Sync 20 accounts at once (IO bound)
         
         async def sync_single_account(account_info):
             async with semaphore:
@@ -135,8 +135,9 @@ class SyncService:
             AND customer_client.status = 'ENABLED'
         """
         
-        # This is a synchronous call, might want to wrap in run_in_executor if blocking loop
-        response = ga_service.search(customer_id=manager_id, query=query)
+        # Wrap blocking synchronous call in executor
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, lambda: list(ga_service.search(customer_id=manager_id, query=query)))
         
         accounts = []
         for row in response:
@@ -196,31 +197,68 @@ class SyncService:
         return campaign
 
     async def _process_metrics(self, account: GoogleAdsAccount, metrics_data: List[Dict]):
-        for row in metrics_data:
-            # Get/Create Campaign
-            # Note: We depend on fetch_daily_metrics to return google_campaign_id and campaign_name
-            campaign_id_str = row.get("google_campaign_id")
-            campaign_name = row.get("campaign_name")
-            
-            if not campaign_id_str:
-                continue
+        if not metrics_data:
+            return
 
-            campaign = await self._get_or_create_campaign(account.id, campaign_id_str, campaign_name)
+        # 1. Collect all campaign IDs and dates to pre-fetch in batches
+        campaign_google_ids = {row.get("google_campaign_id") for row in metrics_data if row.get("google_campaign_id")}
+        dates = {row["date"] if isinstance(row["date"], date) else datetime.strptime(row["date"], "%Y-%m-%d").date() for row in metrics_data}
+        
+        if not campaign_google_ids:
+            return
+
+        # 2. Batch get/create campaigns
+        result = await self.db.execute(
+            select(Campaign).where(
+                Campaign.google_campaign_id.in_(list(campaign_google_ids)),
+                Campaign.account_id == account.id
+            )
+        )
+        existing_campaigns = {c.google_campaign_id: c for c in result.scalars().all()}
+        
+        # Create missing campaigns
+        for row in metrics_data:
+            g_id = row.get("google_campaign_id")
+            name = row.get("campaign_name")
+            if g_id and g_id not in existing_campaigns:
+                campaign = Campaign(
+                    account_id=account.id,
+                    google_campaign_id=g_id,
+                    name=name
+                )
+                self.db.add(campaign)
+                existing_campaigns[g_id] = campaign
+        
+        # Flush to get IDs for new campaigns
+        await self.db.flush()
+
+        # 3. Batch fetch existing metrics to prevent N+1
+        # Create a mapping of (campaign_id, date) -> metric
+        campaign_db_ids = [c.id for c in existing_campaigns.values()]
+        result = await self.db.execute(
+            select(DailyMetric).where(
+                DailyMetric.campaign_id.in_(campaign_db_ids),
+                DailyMetric.date.in_(list(dates))
+            )
+        )
+        existing_metrics = {(m.campaign_id, m.date): m for m in result.scalars().all()}
+
+        # 4. Process rows
+        for row in metrics_data:
+            g_id = row.get("google_campaign_id")
+            if not g_id:
+                continue
             
-            # Check if metric exists
-            metric_date = row["date"] # Assuming date object or string
+            campaign = existing_campaigns.get(g_id)
+            if not campaign:
+                continue
+                
+            metric_date = row["date"]
             if isinstance(metric_date, str):
                 metric_date = datetime.strptime(metric_date, "%Y-%m-%d").date()
 
-            # We can use an UPSERT strategy or check-then-insert.
-            # For simplicity, check-then-insert/update
-            result = await self.db.execute(
-                select(DailyMetric).where(
-                    DailyMetric.campaign_id == campaign.id,
-                    DailyMetric.date == metric_date
-                )
-            )
-            metric = result.scalar_one_or_none()
+            key = (campaign.id, metric_date)
+            metric = existing_metrics.get(key)
             
             if not metric:
                 metric = DailyMetric(
@@ -231,13 +269,18 @@ class SyncService:
                     network=row.get("network", "UNSPECIFIED")
                 )
                 self.db.add(metric)
+                existing_metrics[key] = metric # Prevent duplicates in same batch
             
             # Update values
             metric.impressions = row.get("impressions", 0)
             metric.clicks = row.get("clicks", 0)
             metric.cost_micros = row.get("cost_micros", 0)
-            metric.conversions = Decimal(row.get("conversions", 0))
-            metric.conversion_value = Decimal(row.get("conversion_value", 0))
+            metric.conversions = Decimal(str(row.get("conversions", 0)))
+            metric.conversion_value = Decimal(str(row.get("conversion_value", 0)))
+            
+            # Update name if changed
+            if campaign.name != row.get("campaign_name"):
+                campaign.name = row.get("campaign_name")
             
             # Calculate derived
             metric.calculate_derived_metrics()

@@ -297,43 +297,46 @@ export function useDashboardData(startDate: string, endDate: string) {
                 }
 
                 // Database has data, use it
-                setDataSource('database');
-                setSummary(summaryData);
+                // setDataSource('database'); // This will be set after all fetches succeed
+                // setSummary(summaryData); // This will be set by the parallel fetch
 
-                // Parallelize remaining fetches
-                const [trendsRes, campaignsRes, accountsRes] = await Promise.all([
-                    fetch(`${apiUrl}/dashboard/metrics${queryParams}&metrics=impressions&metrics=clicks&metrics=cost&metrics=conversions`, { headers }),
-                    fetch(`${apiUrl}/dashboard/breakdown/campaign${queryParams}&limit=100`, { headers }),
+                // 3. Parallelize ALL dashboard components
+                // This ensures that slow campaign breakdown doesn't block the summary or charts
+                const startTime = Date.now();
+                console.log(`[useDashboardData] Starting parallel fetch for: ${queryParams}`);
+
+                await Promise.all([
+                    // KPISummary
+                    fetch(`${apiUrl}/dashboard/summary${queryParams}`, { headers })
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => data && setSummary(data)),
+
+                    // TimeSeries
+                    fetch(`${apiUrl}/dashboard/metrics${queryParams}&metrics=impressions&metrics=clicks&metrics=cost&metrics=conversions`, { headers })
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => data && setTimeSeries(data)),
+
+                    // Campaigns Breakdown
+                    fetch(`${apiUrl}/dashboard/breakdown/campaign${queryParams}&limit=100`, { headers })
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                            if (data) {
+                                const enrichedCampaigns = data.items.map((c: any) => ({
+                                    ...c,
+                                    account: c.account_name || c.account || 'Unknown'
+                                }));
+                                setTopCampaigns(enrichedCampaigns);
+                            }
+                        }),
+
+                    // Account Breakdown
                     fetch(`${apiUrl}/dashboard/breakdown/account${queryParams}`, { headers })
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => data?.items && setAccountBreakdown(data.items))
                 ]);
 
-                if (trendsRes.ok) {
-                    const trendsData = await trendsRes.json();
-                    setTimeSeries(trendsData);
-                }
-
-                if (campaignsRes.ok) {
-                    const campaignsData = await campaignsRes.json();
-
-                    // Add account names to campaigns if available mapping exists or generic
-                    // Note: The campaign breakdown endpoint should include account_name ideally
-                    // For now, we rely on what's returned
-
-                    const enrichedCampaigns = campaignsData.items.map((c: any) => ({
-                        ...c,
-                        // Ensure account is set if missing
-                        account: c.account_name || c.account || 'Unknown'
-                    }));
-
-                    setTopCampaigns(enrichedCampaigns);
-                }
-
-                if (accountsRes.ok) {
-                    const accountsData = await accountsRes.json();
-                    if (accountsData.items) {
-                        setAccountBreakdown(accountsData.items);
-                    }
-                }
+                console.log(`[useDashboardData] Completed all fetches in ${Date.now() - startTime}ms`);
+                setDataSource('database');
 
 
             } catch (err: any) {

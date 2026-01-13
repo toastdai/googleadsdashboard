@@ -113,6 +113,8 @@ class DailyMetric(Base):
     __table_args__ = (
         Index("ix_daily_metrics_account_date", "account_id", "date"),
         Index("ix_daily_metrics_campaign_date", "campaign_id", "date"),
+        Index("ix_daily_metrics_account_date_device", "account_id", "date", "device"),
+        Index("ix_daily_metrics_account_date_network", "account_id", "date", "network"),
     )
     
     @property
