@@ -1373,7 +1373,7 @@ export default function DashboardPage() {
             )}
 
             {/* Global Syncing Indicator */}
-            {(isKelkooLoading || isAdmediaLoading || isMaxBountyLoading || isFetchingLive) && !liveLoading && !(isFetchingLive && !liveSummary) && (
+            {(kelkooLoading || admediaLoading || maxBountyLoading || isFetchingLive) && !liveLoading && !(isFetchingLive && !liveSummary) && (
                 <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <div className="bg-gray-900/90 backdrop-blur-md border border-purple-500/30 rounded-xl p-4 shadow-2xl flex items-center gap-4 transition-all hover:border-purple-500/50 group">
                         <div className="relative">
@@ -1386,9 +1386,9 @@ export default function DashboardPage() {
                             <span className="text-sm font-semibold text-white">Syncing Performance Data</span>
                             <div className="flex items-center gap-2 mt-0.5">
                                 {isFetchingLive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Google Ads</span>}
-                                {isKelkooLoading && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Kelkoo</span>}
-                                {isAdmediaLoading && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Admedia</span>}
-                                {isMaxBountyLoading && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">MaxBounty</span>}
+                                {kelkooLoading && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Kelkoo</span>}
+                                {admediaLoading && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Admedia</span>}
+                                {maxBountyLoading && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">MaxBounty</span>}
                             </div>
                         </div>
                     </div>
