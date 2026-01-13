@@ -4,6 +4,7 @@ Manual Sync API Endpoint
 Trigger Google Ads data sync manually.
 """
 
+import asyncio
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks

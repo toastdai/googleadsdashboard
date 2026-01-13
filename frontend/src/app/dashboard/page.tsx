@@ -1439,10 +1439,21 @@ export default function DashboardPage() {
                                     <AlertTriangle className="w-5 h-5 text-amber-400" />
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="text-sm font-semibold text-amber-400 mb-1">Google Ads Data Not Available for Selected Period</h3>
+                                    <h3 className="text-sm font-semibold text-amber-400 mb-1">
+                                        {error ? "Backend Connection Error" : "Google Ads Data Not Available for Selected Period"}
+                                    </h3>
                                     <p className="text-xs text-gray-400">
-                                        No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
-                                        Data is available from Dec 10, 2025 onwards. Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
+                                        {error ? (
+                                            <>
+                                                Failed to connect to the backend API: <span className="text-rose-400 font-mono italic">{error}</span>.
+                                                Please Ensure the FastAPI server is running on port 8000.
+                                            </>
+                                        ) : (
+                                            <>
+                                                No Google Ads data synced for {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                                                Partner network data (Kelkoo, Admedia, MaxBounty) is showing correctly below.
+                                            </>
+                                        )}
                                     </p>
                                 </div>
                                 <button

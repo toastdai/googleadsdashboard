@@ -43,7 +43,7 @@ export function useKelkooData(
 
     const fetchData = useCallback(async (forceRefresh = false) => {
         const cacheKey = CacheKeys.kelkoo(startDate, endDate);
-        
+
         // Check cache first (unless forced refresh)
         if (!forceRefresh) {
             const cached = dataCache.get<{ data: KelkooData; isFallback: boolean }>(cacheKey);
@@ -55,13 +55,13 @@ export function useKelkooData(
                 return;
             }
         }
-        
+
         setLoading(true);
         setError(null);
 
         try {
             const response = await fetch(
-                `/api/kelkoo?start=${startDate}&end=${endDate}`
+                `/api/kelkoo?start_date=${startDate}&end_date=${endDate}`
             );
             const result = await response.json();
 

@@ -59,11 +59,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    
+
     // Get start/end dates from query params
-    let startDate = searchParams.get("start") || yesterday;  // Default to yesterday
-    let endDate = searchParams.get("end") || yesterday;      // Default to yesterday
-    
+    let startDate = searchParams.get("start_date") || searchParams.get("start") || yesterday;
+    let endDate = searchParams.get("end_date") || searchParams.get("end") || yesterday;
+
     // If user requests today's date, automatically fallback to yesterday
     // because Kelkoo data for today is not yet available
     if (startDate === today) {

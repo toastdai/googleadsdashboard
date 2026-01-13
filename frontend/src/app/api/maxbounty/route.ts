@@ -65,11 +65,11 @@ function parseDates(request: Request) {
     const { searchParams } = new URL(request.url);
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    
+
     // Default to yesterday for safer data availability
-    let startDate = searchParams.get("start") || yesterday;
-    let endDate = searchParams.get("end") || yesterday;
-    
+    let startDate = searchParams.get("start_date") || searchParams.get("start") || yesterday;
+    let endDate = searchParams.get("end_date") || searchParams.get("end") || yesterday;
+
     // MaxBounty API typically has same-day data available
     return { startDate, endDate };
 }

@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     
     # Slack (optional)
     slack_webhook_url: Optional[str] = None
+
+    # Telegram Alerts (optional)
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    spike_threshold_percent: float = 20.0
     
     # Frontend URL (for CORS)
     frontend_url: str = "http://localhost:3000"

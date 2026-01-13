@@ -65,7 +65,7 @@ export function useMaxBountyData(
 
     const fetchData = useCallback(async (forceRefresh = false) => {
         const cacheKey = CacheKeys.maxbounty(startDate, endDate);
-        
+
         // Check cache first (unless forced refresh)
         if (!forceRefresh) {
             const cached = dataCache.get<CachedMaxBountyResult>(cacheKey);
@@ -78,13 +78,13 @@ export function useMaxBountyData(
                 return;
             }
         }
-        
+
         setLoading(true);
         setError(null);
 
         try {
             const response = await fetch(
-                `/api/maxbounty?start=${startDate}&end=${endDate}`
+                `/api/maxbounty?start_date=${startDate}&end_date=${endDate}`
             );
 
             if (!response.ok) {
@@ -101,7 +101,7 @@ export function useMaxBountyData(
             setData(result.data);
             setCampaigns(result.data?.campaigns || []);
             setIsFallback(Boolean(result.isFallback));
-            
+
             // Cache the result
             dataCache.set(cacheKey, {
                 data: result.data,

@@ -69,7 +69,7 @@ export function useAdmediaData(
 
     const fetchData = useCallback(async (forceRefresh = false) => {
         const cacheKey = CacheKeys.admedia(startDate, endDate);
-        
+
         // Check cache first (unless forced refresh)
         if (!forceRefresh) {
             const cached = dataCache.get<CachedAdmediaResult>(cacheKey);
@@ -82,13 +82,13 @@ export function useAdmediaData(
                 return;
             }
         }
-        
+
         setLoading(true);
         setError(null);
 
         try {
             const response = await fetch(
-                `/api/admedia?start=${startDate}&end=${endDate}`
+                `/api/admedia?start_date=${startDate}&end_date=${endDate}`
             );
 
             if (!response.ok) {
@@ -98,7 +98,7 @@ export function useAdmediaData(
 
             const result = await response.json();
             applyResult(result);
-            
+
             // Cache the result
             if (result?.success && result.data) {
                 dataCache.set(cacheKey, {
