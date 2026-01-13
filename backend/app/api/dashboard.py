@@ -336,7 +336,7 @@ async def get_breakdown(
         return await _get_device_breakdown(db, account_ids, start_date, end_date)
     elif dimension == "network":
         return await _get_network_breakdown(db, account_ids, start_date, end_date)
-    elif dimension == "customer_client":
+    elif dimension == "customer_client" or dimension == "account":
         return await _get_customer_client_breakdown(db, account_ids, start_date, end_date)
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported dimension: {dimension}")
