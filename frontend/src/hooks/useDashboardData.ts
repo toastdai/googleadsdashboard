@@ -220,6 +220,12 @@ export function useDashboardData(startDate: string, endDate: string) {
             setDataSource('none');
             setLiveData(null);
 
+            // Clear all current data to ensure UI is in sync for new dates
+            setSummary(null);
+            setTimeSeries([]);
+            setTopCampaigns([]);
+            setAccountBreakdown([]);
+
             // Abort if a newer fetch started
             if (currentFetchId !== fetchIdRef.current) return;
 

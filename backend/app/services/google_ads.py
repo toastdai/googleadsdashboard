@@ -279,7 +279,6 @@ class GoogleAdsService:
         query = f"""
             SELECT
                 segments.date,
-                segments.date,
                 campaign.id,
                 campaign.name,
                 metrics.impressions,

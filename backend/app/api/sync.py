@@ -386,7 +386,8 @@ async def fetch_live_data(
         # Run all fetches in parallel
         # We can use a semaphore if there are too many accounts to avoid hitting rate limits
         # Google Ads API has high limits, but 10-20 concurrent requests is safe
-        semaphore = asyncio.Semaphore(10)
+        # Google Ads API has high limits, but 50 concurrent requests is safe for large managers
+        semaphore = asyncio.Semaphore(50)
         
         async def safe_fetch(acc):
             async with semaphore:
@@ -425,7 +426,6 @@ async def fetch_live_data(
                 all_campaigns[campaign_id]["impressions"] += impressions
                 all_campaigns[campaign_id]["clicks"] += clicks
                 all_campaigns[campaign_id]["cost"] += cost
-                all_campaigns[campaign_id]["conversions"] += conversions
                 all_campaigns[campaign_id]["conversions"] += conversions
                 all_campaigns[campaign_id]["conversion_value"] += conversion_value
                 

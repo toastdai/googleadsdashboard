@@ -62,11 +62,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    
+
     // Get start/end dates from query params, default to yesterday for safer data availability
     let startDate = searchParams.get("start") || yesterday;
     let endDate = searchParams.get("end") || yesterday;
-    
+
     // If user requests today's date, use it but be prepared for potential delays in API data
     // (Admedia typically has same-day data but with some delay)
 
@@ -103,25 +103,29 @@ export async function GET(request: Request) {
         // Merchant conversion report (returns conversions and clicks by advertiser)
         let conversions = 0;
         let conversionClicks = 0;
-        let totalPages = 1;
-        let page = 1;
 
-        while (page <= totalPages) {
-            const conversionUrl = `http://api.admedia.com/merchant_conversion_report.php?aid=${ADMEDIA_AID}&auth=${ADMEDIA_API_KEY}&start_date=${startDate}&end_date=${endDate}&format=xml&page=${page}`;
-            const conversionXml = await fetchXml(conversionUrl);
+        // 1. Fetch first page to get total pages
+        const firstConversionUrl = `http://api.admedia.com/merchant_conversion_report.php?aid=${ADMEDIA_AID}&auth=${ADMEDIA_API_KEY}&start_date=${startDate}&end_date=${endDate}&format=xml&page=1`;
+        const firstConversionXml = await fetchXml(firstConversionUrl);
 
-            const pageConversions = extractNumbers(conversionXml, "conversions").reduce((sum, val) => sum + val, 0);
-            const pageClicks = extractNumbers(conversionXml, "clicks").reduce((sum, val) => sum + val, 0);
-            conversions += pageConversions;
-            conversionClicks += pageClicks;
+        conversions += extractNumbers(firstConversionXml, "conversions").reduce((sum, val) => sum + val, 0);
+        conversionClicks += extractNumbers(firstConversionXml, "clicks").reduce((sum, val) => sum + val, 0);
 
-            const parsedTotalPages = Number.parseInt(extractNumbers(conversionXml, "total_pages")[0]?.toString() || "1", 10);
-            totalPages = Number.isNaN(parsedTotalPages) ? 1 : parsedTotalPages;
+        const totalPages = Math.min(Number.parseInt(extractNumbers(firstConversionXml, "total_pages")[0]?.toString() || "1", 10), 10);
 
-            page += 1;
+        // 2. Fetch remaining pages in parallel
+        if (totalPages > 1) {
+            const pagePromises = [];
+            for (let p = 2; p <= totalPages; p++) {
+                const url = `http://api.admedia.com/merchant_conversion_report.php?aid=${ADMEDIA_AID}&auth=${ADMEDIA_API_KEY}&start_date=${startDate}&end_date=${endDate}&format=xml&page=${p}`;
+                pagePromises.push(fetchXml(url));
+            }
 
-            // Safety guard to avoid infinite loops on malformed responses
-            if (page > 10) break;
+            const pageResults = await Promise.all(pagePromises);
+            for (const xml of pageResults) {
+                conversions += extractNumbers(xml, "conversions").reduce((sum, val) => sum + val, 0);
+                conversionClicks += extractNumbers(xml, "clicks").reduce((sum, val) => sum + val, 0);
+            }
         }
 
         const clicks = totalClicks || conversionClicks;
