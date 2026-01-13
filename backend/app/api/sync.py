@@ -382,13 +382,15 @@ async def fetch_live_data(
                 return metrics_data
             except Exception as e:
                 print(f"Error fetching account {customer_id}: {e}")
+                return {"error": str(e), "customer_id": customer_id}
+            except Exception as e:
+                print(f"Error fetching account {customer_id}: {e}")
                 return []
 
         # Run all fetches in parallel
         # We can use a semaphore if there are too many accounts to avoid hitting rate limits
-        # Google Ads API has high limits, but 10-20 concurrent requests is safe
-        # Google Ads API has high limits, but 50 concurrent requests is safe for large managers
-        semaphore = asyncio.Semaphore(50)
+        # Lowered to 10 for better stability on Render free tier
+        semaphore = asyncio.Semaphore(10)
         
         async def safe_fetch(acc):
             async with semaphore:
@@ -396,8 +398,25 @@ async def fetch_live_data(
 
         results_list = await asyncio.gather(*[safe_fetch(acc) for acc in child_accounts])
         
+        # Check for failures
+        valid_results = []
+        errors = []
+        for res in results_list:
+            if isinstance(res, dict) and "error" in res:
+                errors.append(res)
+            elif isinstance(res, list):
+                valid_results.append(res)
+        
+        # If we have child accounts but NO valid results, raise an error
+        if child_accounts and not valid_results:
+             error_msgs = "; ".join([f"{e['customer_id']}: {e['error']}" for e in errors[:5]])
+             raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to fetch data from any account. Errors: {error_msgs}..."
+            )
+
         # Process results sequentially to aggregate (CPU bound, fast)
-        for metrics_data in results_list:
+        for metrics_data in valid_results:
             for row in metrics_data:
                 campaign_id = row['google_campaign_id']
                 campaign_name = row['campaign_name']
