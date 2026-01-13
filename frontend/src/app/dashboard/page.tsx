@@ -1506,9 +1506,17 @@ export default function DashboardPage() {
                                     )}
                                     {" "}
                                     <span className="text-gray-400">
-                                        Kelkoo: <span className="text-emerald-400">{liveKelkooAggregates.totalLeads.toLocaleString()}</span> leads (€{liveKelkooAggregates.totalRevenueEur.toLocaleString()}).{" "}
-                                        Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads (${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).{" "}
-                                        MaxBounty: <span className="text-rose-400">{liveMaxBountyAggregates.leads.toLocaleString()}</span> leads (${liveMaxBountyAggregates.earnings.toLocaleString()}).
+                                        Kelkoo: <span className="text-emerald-400">{liveKelkooAggregates.totalLeads.toLocaleString()}</span> leads
+                                        {liveKelkooAggregates.totalSales > 0 && <span> / <span className="text-emerald-300">{liveKelkooAggregates.totalSales}</span> sales</span>}
+                                        {" "}(€{liveKelkooAggregates.totalRevenueEur.toLocaleString()}).{" "}
+
+                                        Admedia: <span className="text-amber-400">{liveAdmediaAggregates.totalLeads.toLocaleString()}</span> leads
+                                        {liveAdmediaAggregates.totalConversions > 0 && <span> / <span className="text-amber-300">{liveAdmediaAggregates.totalConversions}</span> conv</span>}
+                                        {" "}(${liveAdmediaAggregates.totalEarningsUsd.toLocaleString()}).{" "}
+
+                                        MaxBounty: <span className="text-rose-400">{liveMaxBountyAggregates.leads.toLocaleString()}</span> leads
+                                        {liveMaxBountyAggregates.sales > 0 && <span> / <span className="text-rose-300">{liveMaxBountyAggregates.sales}</span> sales</span>}
+                                        {" "}(${liveMaxBountyAggregates.earnings.toLocaleString()}).
                                     </span>
                                 </p>
                             </div>
