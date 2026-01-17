@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dataCache, CacheKeys } from "@/lib/cache";
+import { EXCHANGE_RATES } from "@/lib/constants";
 
 export interface KelkooData {
     clickCount: number;
@@ -29,7 +30,7 @@ interface UseKelkooDataResult {
     refetch: () => void;
 }
 
-const EUR_TO_INR = 89.5;
+
 
 export function useKelkooData(
     startDate: string,
@@ -102,10 +103,10 @@ export function calculateKelkooMetrics(data: KelkooData) {
     return {
         totalLeads: data.leadCount,
         totalRevenueEur: data.leadEstimatedRevenueInEur,
-        totalRevenueInr: data.leadEstimatedRevenueInEur * EUR_TO_INR,
+        totalRevenueInr: data.leadEstimatedRevenueInEur * EXCHANGE_RATES.EUR_TO_INR,
         totalSales: data.saleCount,
         totalSaleValueEur: data.saleValueInEur,
-        totalSaleValueInr: data.saleValueInEur * EUR_TO_INR,
+        totalSaleValueInr: data.saleValueInEur * EXCHANGE_RATES.EUR_TO_INR,
         conversionRate: data.crPercentage,
         revenuePerLead: data.valuePerLeadInEur,
         clickCount: data.clickCount,
@@ -140,8 +141,8 @@ export function calculateCampaignKelkooData(
     const kelkooSales = Math.round(data.saleCount * clickRatio);
     const kelkooSaleValue = Math.round(data.saleValueInEur * clickRatio * 100) / 100;
 
-    const kelkooRevenueInr = Math.round(kelkooRevenue * EUR_TO_INR * 100) / 100;
-    const kelkooSaleValueInr = Math.round(kelkooSaleValue * EUR_TO_INR * 100) / 100;
+    const kelkooRevenueInr = Math.round(kelkooRevenue * EXCHANGE_RATES.EUR_TO_INR * 100) / 100;
+    const kelkooSaleValueInr = Math.round(kelkooSaleValue * EXCHANGE_RATES.EUR_TO_INR * 100) / 100;
 
     // ROAS should use commission/lead revenue only (not gross sale value), otherwise we overstate returns.
     const totalRevenueInr = kelkooRevenueInr;

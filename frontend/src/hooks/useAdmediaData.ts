@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dataCache, CacheKeys } from "@/lib/cache";
+import { EXCHANGE_RATES } from "@/lib/constants";
 
 export interface AdmediaData {
     clicks: number;
@@ -38,7 +39,7 @@ interface UseAdmediaDataResult {
     refetch: () => void;
 }
 
-const USD_TO_INR = 85;
+
 
 interface CachedAdmediaResult {
     data: AdmediaData;
@@ -170,7 +171,7 @@ export function calculateCampaignAdmediaData(
     const admediaLeads = Math.round(data.leads * clickRatio);
     const admediaConversions = Math.round(data.conversions * clickRatio);
     const admediaEarnings = Math.round(data.earnings * clickRatio * 100) / 100;
-    const admediaEarningsInr = Math.round(admediaEarnings * USD_TO_INR * 100) / 100;
+    const admediaEarningsInr = Math.round(admediaEarnings * EXCHANGE_RATES.USD_TO_INR * 100) / 100;
 
     const actualROAS = campaignCost > 0 ? Math.round((admediaEarningsInr / campaignCost) * 100) / 100 : 0;
     const profitability = Math.round((admediaEarningsInr - campaignCost) * 100) / 100;

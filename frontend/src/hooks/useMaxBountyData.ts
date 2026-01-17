@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dataCache, CacheKeys } from "@/lib/cache";
+import { EXCHANGE_RATES } from "@/lib/constants";
 
 // Safe toFixed wrapper to prevent errors on null/undefined/non-numeric values
 const safeToFixed = (value: any, decimals: number = 2): string => {
@@ -166,7 +167,7 @@ export function formatMaxBountyPercentage(value: number): string {
     return `${safeToFixed(value, 2)}%`;
 }
 
-const USD_TO_INR = 85;
+
 
 // Calculate campaign-specific MaxBounty metrics based on click ratio
 export function calculateCampaignMaxBountyData(
@@ -192,7 +193,7 @@ export function calculateCampaignMaxBountyData(
     const maxBountyLeads = Math.round(data.leads * clickRatio);
     const maxBountySales = Math.round(data.sales * clickRatio);
     const maxBountyEarnings = Math.round(data.earnings * clickRatio * 100) / 100;
-    const maxBountyEarningsInr = Math.round(maxBountyEarnings * USD_TO_INR * 100) / 100;
+    const maxBountyEarningsInr = Math.round(maxBountyEarnings * EXCHANGE_RATES.USD_TO_INR * 100) / 100;
 
     const actualROAS = campaignCost > 0 ? Math.round((maxBountyEarningsInr / campaignCost) * 100) / 100 : 0;
     const profitability = Math.round((maxBountyEarningsInr - campaignCost) * 100) / 100;

@@ -5,8 +5,12 @@ import { TrendingUp, AreaChart, BarChart3, PieChart } from "lucide-react";
 import { MetricsLineChart, MetricsAreaChart, MetricsBarChart, MetricsPieChart, ChartSkeleton } from "@/components/charts";
 import html2canvas from "html2canvas";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useKelkooData } from "@/hooks/useKelkooData";
+import { useAdmediaData } from "@/hooks/useAdmediaData";
+import { useMaxBountyData } from "@/hooks/useMaxBountyData";
 import { useDateRange } from "@/lib/date-context";
 import { transformTimeSeries } from "@/lib/dashboard-utils";
+import { EXCHANGE_RATES } from "@/lib/constants";
 
 // Available metrics for graph builder
 const allMetrics = [
@@ -70,21 +74,43 @@ export default function ReportsPage() {
     // Fetch backend data using global date range
     const { timeSeries, loading: backendLoading, isFetchingLive, dataSource } = useDashboardData(globalDateRange.start, globalDateRange.end);
 
+    // Fetch Partner Data (Summaries for the period)
+    const { data: kelkooData } = useKelkooData(globalDateRange.start, globalDateRange.end);
+    const { data: admediaData } = useAdmediaData(globalDateRange.start, globalDateRange.end);
+    const { data: maxBountyData } = useMaxBountyData(globalDateRange.start, globalDateRange.end);
+
     // Transform time series data for charts
     const data = useMemo(() => {
         const transformed = transformTimeSeries(timeSeries);
-        // Add derived metrics
-        return transformed.map(day => ({
-            ...day,
-            cpa: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
-            conversion_value: day.conversion_value || 0,
-            avg_position: 2.1, // Not available from backend
-            search_impression_share: 65, // Not available from backend
-            cost_per_conversion: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
-            kelkoo_leads: Math.round(day.conversions * 0.4), // Estimated until we integrate partner time series
-            kelkoo_revenue: Math.round(day.conversions * 0.4 * 90), // Estimated until we integrate partner time series
-        }));
-    }, [timeSeries]);
+
+        // Calculate totals for distribution
+        const totalGoogleConversions = transformed.reduce((sum, d) => sum + d.conversions, 0) || 1;
+        const totalGoogleClicks = transformed.reduce((sum, d) => sum + d.clicks, 0) || 1;
+
+        // Partner Totals
+        const kLeads = kelkooData?.leadCount || 0;
+        const kRev = (kelkooData?.leadEstimatedRevenueInEur || 0) * EXCHANGE_RATES.EUR_TO_INR;
+
+        // Add derived metrics & Distribute partner data
+        return transformed.map(day => {
+            // Distribution factors
+            const convRatio = day.conversions / totalGoogleConversions;
+            // const clickRatio = day.clicks / totalGoogleClicks; 
+
+            return {
+                ...day,
+                cpa: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
+                conversion_value: day.conversion_value || 0,
+                avg_position: 2.1,
+                search_impression_share: 65,
+                cost_per_conversion: day.conversions > 0 ? Math.round(day.cost / day.conversions * 100) / 100 : 0,
+
+                // Distribute Kelkoo data based on Google Conversion volume (assuming correlation)
+                kelkoo_leads: Math.round(kLeads * convRatio),
+                kelkoo_revenue: Math.round(kRev * convRatio),
+            };
+        });
+    }, [timeSeries, kelkooData, admediaData, maxBountyData]);
 
     const isLoading = backendLoading;
 

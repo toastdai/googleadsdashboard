@@ -896,16 +896,32 @@ export default function DashboardPage() {
     }, [liveEnrichedCampaigns]);
 
     // Compute totals from live data
+    // Compute totals from live data + partner networks
     const totals = useMemo(() => {
+        // 1. Google Ads Base
         const result = {
             clicks: Number(liveSummary?.clicks.value) || 0,
             impressions: Number(liveSummary?.impressions.value) || 0,
             cost: Number(liveSummary?.cost.value) || 0,
-            conversions: Number(liveSummary?.conversions.value) || 0,
+            conversions: Number(liveSummary?.conversions.value) || 0, // Google conversions
+            conversion_value: Number(liveSummary?.conversion_value.value) || 0, // Google conv value
             ctr: Number(liveSummary?.ctr.value) || 0,
             avgCpc: Number(liveSummary?.cpc.value) || 0,
             totalBudget: 0
         };
+
+        // 2. Add Partner Data
+        // Kelkoo: sales are effectively conversions
+        result.conversions += liveKelkooAggregates.totalSales;
+        result.conversion_value += liveKelkooAggregates.totalRevenueInr;
+
+        // Admedia: conversions key exists directly
+        result.conversions += liveAdmediaAggregates.totalConversions;
+        result.conversion_value += liveAdmediaAggregates.totalEarningsInr;
+
+        // MaxBounty: sales are effectively conversions
+        result.conversions += liveMaxBountyAggregates.sales;
+        result.conversion_value += liveMaxBountyAggregates.earningsInr;
 
         // Calculate total budget from campaigns
         liveEnrichedCampaigns.forEach(c => {
@@ -913,7 +929,7 @@ export default function DashboardPage() {
         });
 
         return result;
-    }, [liveSummary, liveEnrichedCampaigns]);
+    }, [liveSummary, liveEnrichedCampaigns, liveKelkooAggregates, liveAdmediaAggregates, liveMaxBountyAggregates]);
 
     // Compute conversion rate
     const conversionRate = totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0;
@@ -950,19 +966,30 @@ export default function DashboardPage() {
     useKeyboardShortcut('m', handleSwitchMetric);
 
     function handleExport() {
-        const headers = ["Campaign", "Account", "Clicks", "Impressions", "Cost", "Conversions", "CTR", "Conv Rate"];
+        const headers = ["Campaign", "Account", "Clicks", "Impressions", "Cost", "Conversions (Google)", "Partner Rev (INR)", "Total Rev (INR)", "Total ROI (ROAS)"];
         const csvContent = [
             headers.join(","),
-            ...liveEnrichedCampaigns.map(c => [
-                `"${c.name}"`,
-                c.account || "",
-                c.clicks,
-                c.impressions,
-                safeToFixed(c.cost, 2),
-                safeToFixed(c.conversions, 2),
-                safeToFixed(c.ctr, 2),
-                safeToFixed(c.conversionRate, 2)
-            ].join(","))
+            ...liveEnrichedCampaigns.map(c => {
+                // Calculate partner revenue for this campaign
+                let partnerRev = 0;
+                if (c.kelkooRevenueInr) partnerRev += c.kelkooRevenueInr;
+                if (c.admediaEarningsInr) partnerRev += c.admediaEarningsInr;
+                if (c.maxBountyEarningsInr) partnerRev += c.maxBountyEarningsInr;
+
+                const totalRev = (c.conversionValue || 0) + partnerRev;
+
+                return [
+                    `"${c.name}"`,
+                    c.account || "",
+                    c.clicks,
+                    c.impressions,
+                    safeToFixed(c.cost, 2),
+                    safeToFixed(c.conversions, 2),
+                    safeToFixed(partnerRev, 2),
+                    safeToFixed(totalRev, 2),
+                    safeToFixed(c.roas, 2)
+                ].join(",")
+            })
         ].join("\n");
 
         const blob = new Blob([csvContent], { type: "text/csv" });
@@ -996,18 +1023,13 @@ export default function DashboardPage() {
     }
 
     // Derived calculations - use actual conversion_value from API
+    // Derived calculations - use aggregated totals
     const avgROAS = useMemo(() => {
-        // Use actual conversion_value if available from liveSummary, else calculate from partner data
-        const totalConversionValue = liveSummary?.conversion_value?.value || 0;
-        if (totalConversionValue > 0 && totals.cost > 0) {
-            return totalConversionValue / totals.cost;
+        if (totals.cost > 0) {
+            return totals.conversion_value / totals.cost;
         }
-        // Fallback: Calculate from partner revenue
-        const partnerRevenue = networkComparison.kelkoo.revenueInr +
-            networkComparison.admedia.revenueInr +
-            networkComparison.maxbounty.revenueInr;
-        return totals.cost > 0 ? partnerRevenue / totals.cost : 0;
-    }, [totals, liveSummary, networkComparison]);
+        return 0;
+    }, [totals]);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const budgetUtilization = useMemo(() => {
