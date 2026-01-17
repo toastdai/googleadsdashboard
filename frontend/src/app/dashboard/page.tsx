@@ -771,16 +771,9 @@ export default function DashboardPage() {
                 ...detectNetwork(c.name),
             };
 
-            // Calculate AI-based health metrics using the same input format as BreakdownItem
-            const healthScore = calculateHealthScore(c as BreakdownItem);
-            const efficiencyRating = calculateEfficiencyRating(c as BreakdownItem);
-            const riskLevel = calculateRiskLevel(c as BreakdownItem);
-
             return {
                 ...enrichedCampaign,
-                healthScore,
-                efficiencyRating,
-                riskLevel,
+                // AI metrics calculated in final pass
             };
         }) as any[];
 
@@ -841,12 +834,26 @@ export default function DashboardPage() {
             });
         }
 
-        // Final pass: Update roas to use actualROAS for partner campaigns (calculated with partner revenue)
+        // Final pass: Update roas and calculate AI metrics on ENRICHED data
         result = result.map(campaign => {
-            if (campaign.actualROAS !== undefined && campaign.actualROAS > 0) {
-                return { ...campaign, roas: campaign.actualROAS };
+            let finalCampaign = { ...campaign };
+
+            // 1. Ensure ROAS is accurate (Partner vs Google)
+            if (finalCampaign.actualROAS !== undefined && finalCampaign.actualROAS > 0) {
+                finalCampaign.roas = finalCampaign.actualROAS;
             }
-            return campaign;
+
+            // 2. Calculate AI Metrics using the FINAL aggregated numbers (Conversions, ROAS, etc.)
+            const healthScore = calculateHealthScore(finalCampaign as BreakdownItem);
+            const efficiencyRating = calculateEfficiencyRating(finalCampaign as BreakdownItem);
+            const riskLevel = calculateRiskLevel(finalCampaign as BreakdownItem);
+
+            return {
+                ...finalCampaign,
+                healthScore,
+                efficiencyRating,
+                riskLevel
+            };
         });
 
         return result;
