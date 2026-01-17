@@ -942,6 +942,10 @@ export default function DashboardPage() {
             if (c.budget) result.totalBudget += Number(c.budget) || 0;
         });
 
+        // 3. Final calculations for the aggregated total
+        result.ctr = result.impressions > 0 ? (result.clicks / result.impressions) * 100 : 0;
+        result.avgCpc = result.clicks > 0 ? result.cost / result.clicks : 0;
+
         return result;
     }, [liveSummary, liveEnrichedCampaigns, liveKelkooAggregates, liveAdmediaAggregates, liveMaxBountyAggregates]);
 
@@ -1882,7 +1886,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
                         <EnhancedKPICard
                             title="Total Clicks"
-                            value={liveSummary ? formatNumber(liveSummary.clicks.value) : formatNumber(totals.clicks)}
+                            value={formatNumber(totals.clicks)}
                             subtitle={liveSummary ? `${formatNumber(liveSummary.impressions.value)} impr.` : `${formatNumber(totals.impressions)} impr.`}
                             trend={liveSummary?.clicks.change_percent ? `${safeToFixed(liveSummary.clicks.change_percent, 1)}%` : "+8.2%"}
                             trendUp={liveSummary?.clicks.change_direction === "up"}
@@ -1893,7 +1897,7 @@ export default function DashboardPage() {
                         />
                         <EnhancedKPICard
                             title="Total Cost"
-                            value={liveSummary ? formatCurrency(liveSummary.cost.value) : formatCurrency(totals.cost)}
+                            value={formatCurrency(totals.cost)}
                             subtitle={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)} avg CPC` : `Rs.${safeToFixed(totals.avgCpc, 0)} avg CPC`}
                             trend={liveSummary?.cost.change_percent ? `${safeToFixed(liveSummary.cost.change_percent, 1)}%` : "-2.4%"}
                             trendUp={liveSummary?.cost.change_direction === "down"}
@@ -1903,9 +1907,9 @@ export default function DashboardPage() {
                             onClick={() => setSelectedMetric("cost")}
                         />
                         <EnhancedKPICard
-                            title="Conversions"
-                            value={liveSummary ? formatNumber(liveSummary.conversions.value) : formatNumber(totals.conversions)}
-                            subtitle={liveSummary ? `${safeToFixed(liveSummary.conversions.value / liveSummary.clicks.value * 100, 1)}% rate` : `${safeToFixed(conversionRate, 1)}% rate`}
+                            title="Total Conversions"
+                            value={formatNumber(totals.conversions)}
+                            subtitle={`${safeToFixed(conversionRate, 1)}% rate`}
                             trend={liveSummary?.conversions.change_percent ? `${safeToFixed(liveSummary.conversions.change_percent, 1)}%` : "+15.3%"}
                             trendUp={liveSummary?.conversions.change_direction === "up"}
                             icon={<ConversionsIcon />}
@@ -1914,9 +1918,9 @@ export default function DashboardPage() {
                             onClick={() => setSelectedMetric("conversions")}
                         />
                         <EnhancedKPICard
-                            title="CTR"
-                            value={liveSummary ? `${safeToFixed(liveSummary.ctr.value, 2)}%` : `${safeToFixed(totals.ctr, 2)}%`}
-                            subtitle="Above avg"
+                            title="Total CTR"
+                            value={`${safeToFixed(totals.ctr, 2)}%`}
+                            subtitle="Combined Avg"
                             trend={liveSummary?.ctr.change_percent ? `${safeToFixed(liveSummary.ctr.change_percent, 1)}%` : "+0.5%"}
                             trendUp={liveSummary?.ctr.change_direction === "up"}
                             icon={<CTRIcon />}
@@ -1926,7 +1930,7 @@ export default function DashboardPage() {
                         />
                         <EnhancedKPICard
                             title="Avg CPC"
-                            value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpc.value, 0)}` : `Rs.${safeToFixed(totals.avgCpc, 0)}`}
+                            value={`Rs.${safeToFixed(totals.avgCpc, 2)}`}
                             subtitle="Per click"
                             trend={liveSummary?.cpc.change_percent ? `${safeToFixed(liveSummary.cpc.change_percent, 1)}%` : "-1.2%"}
                             trendUp={liveSummary?.cpc.change_direction === "down"}
@@ -1935,8 +1939,8 @@ export default function DashboardPage() {
                             onClick={() => setActiveKPI("cpc")}
                         />
                         <EnhancedKPICard
-                            title="CPA"
-                            value={liveSummary ? `Rs.${safeToFixed(liveSummary.cpa.value, 0)}` : `Rs.${safeToFixed(totals.cost / totals.conversions, 0)}`}
+                            title="Total CPA"
+                            value={`Rs.${safeToFixed(totals.conversions > 0 ? totals.cost / totals.conversions : 0, 0)}`}
                             subtitle="Per conversion"
                             trend={liveSummary?.cpa.change_percent ? `${safeToFixed(liveSummary.cpa.change_percent, 1)}%` : "-3.5%"}
                             trendUp={liveSummary?.cpa.change_direction === "down"}
@@ -1945,8 +1949,8 @@ export default function DashboardPage() {
                             onClick={() => setActiveKPI("cpa")}
                         />
                         <EnhancedKPICard
-                            title="ROAS"
-                            value={liveSummary ? `${safeToFixed(liveSummary.roas.value, 2)}x` : `${safeToFixed(avgROAS, 2)}x`}
+                            title="Total ROAS"
+                            value={`${safeToFixed(avgROAS, 2)}x`}
                             subtitle="Return on ad spend"
                             trend={liveSummary?.roas.change_percent ? `${safeToFixed(liveSummary.roas.change_percent, 1)}%` : "+5.2%"}
                             trendUp={liveSummary?.roas.change_direction === "up"}
