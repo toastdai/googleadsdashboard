@@ -89,10 +89,10 @@ def start_scheduler():
         max_instances=1
     )
 
-    # Add Auto-Sync Job (Every 1 hour)
+    # Add Auto-Sync Job (Every 12 hours)
     scheduler.add_job(
         run_sync_recent_job,
-        trigger=IntervalTrigger(hours=1),
+        trigger=IntervalTrigger(hours=12),
         id="sync_recent",
         name="Sync Recent Google Ads Data",
         replace_existing=True,
@@ -116,7 +116,18 @@ def start_scheduler():
     # Run initial check after 30 seconds (to let the app fully start)
     async def delayed_initial_check():
         await asyncio.sleep(30)
+        logger.info("Running initial startup checks...")
+        
+        # 1. Check for spikes
         await check_spikes_job()
+        
+        # 2. Run sync to catch up on any missing data (gap fill)
+        # We wait a bit more (e.g., 10s extra) or run it sequentially
+        try:
+             logger.info("Triggering initial data sync...")
+             await run_sync_recent_job()
+        except Exception as e:
+            logger.error(f"Error in initial data sync: {e}")
     
     # Schedule the delayed initial check
     asyncio.create_task(delayed_initial_check())

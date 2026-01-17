@@ -286,12 +286,47 @@ class SyncService:
             metric.calculate_derived_metrics()
 
     async def sync_recent(self, manager_id: str, refresh_token: str, user_id: UUID):
-        """Syncs data for yesterday and today to ensure up-to-date metrics."""
-        today = date.today()
-        yesterday = today - timedelta(days=1)
+        """
+        Syncs data for the "gap" since the last data point, up to today.
+        Limits the "catch-up" to 14 days to keep it quick (rest handled by backfill).
+        Default: Yesterday and Today.
+        """
+        logger.info("Determining sync window for recent data...")
         
-        logger.info(f"Running auto-sync for {yesterday} to {today}")
-        await self.sync_all_accounts(manager_id, refresh_token, yesterday, today, user_id)
+        # 1. Find the latest date we have data for
+        result = await self.db.execute(select(func.max(DailyMetric.date)))
+        latest_date_in_db = result.scalar()
+        
+        today = date.today()
+        default_start = today - timedelta(days=1)  # Yesterday
+        
+        start_date = default_start
+        
+        if latest_date_in_db:
+            # If we have data, start from the day AFTER the last data
+            # But only if it's within reasonable limits (e.g., 14 days)
+            next_day = latest_date_in_db + timedelta(days=1)
+            
+            days_gap = (today - next_day).days
+            
+            if 0 <= days_gap <= 14:
+                start_date = next_day
+                logger.info(f"Gap detected: {days_gap} days. Catching up from {start_date}")
+            elif days_gap > 14:
+                # Gap too large for "recent" sync, just do last 3 days to be safe + quick
+                # Let backfill_history handle the rest
+                start_date = today - timedelta(days=3)
+                logger.info(f"Gap too large ({days_gap} days). Limiting recent sync to last 3 days (from {start_date}).")
+            else:
+                # Up to date (next_day > today), just force sync yesterday/today to ensure completeness
+                 start_date = default_start
+        
+        # Always ensure we don't start in the future (though logic above prevents it)
+        if start_date > today:
+            start_date = today
+
+        logger.info(f"Running auto-sync for {start_date} to {today}")
+        await self.sync_all_accounts(manager_id, refresh_token, start_date, today, user_id)
 
     async def backfill_history(self, manager_id: str, refresh_token: str, user_id: UUID, days_per_run: int = 30):
         """

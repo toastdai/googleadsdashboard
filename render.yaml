@@ -45,7 +45,35 @@ databases:
     user: tellspike
     plan: free
     region: singapore
-# Optional: Redis if we need it for caching later
-# - type: redis
-#   name: googleads-cache
-#   plan: free
+  # Optional: Redis if we need it for caching later
+  # - type: redis
+  #   name: googleads-cache
+  #   plan: free
+
+  # -----------------------------------------------------------------------
+  # Cron Job: Auto-Sync Data every 12 hours
+  # Keep backend fresh even if the web service sleeps
+  # -----------------------------------------------------------------------
+  - type: cron
+    name: googleads-data-sync
+    runtime: docker
+    rootDir: backend
+    region: singapore
+    schedule: "0 */12 * * *" # Every 12 hours
+    plan: free
+    dockerCommand: python run_auto_sync.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: googleads-db
+          property: connectionString
+      - key: GOOGLE_ADS_REFRESH_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_CLIENT_ID
+        sync: false
+      - key: GOOGLE_ADS_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_ADS_DEVELOPER_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
+        sync: false
