@@ -9,6 +9,7 @@ import { useMaxBountyData, calculateCampaignMaxBountyData } from "@/hooks/useMax
 import { useDashboardData, BreakdownItem } from "@/hooks/useDashboardData";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { useDateRange } from "@/lib/date-context";
+import { EXCHANGE_RATES } from "@/lib/constants";
 import {
     RefreshCw,
     Download,
@@ -647,6 +648,7 @@ export default function DashboardPage() {
     // Live Kelkoo aggregates from API
     const liveKelkooAggregates = useMemo(() => {
         if (!kelkooApiData) return {
+            clickCount: 0,
             totalLeads: 0,
             totalRevenueEur: 0,
             totalRevenueInr: 0,
@@ -658,14 +660,14 @@ export default function DashboardPage() {
             conversionRate: 0,
             klCampaignCount: 0,
         };
-        const EUR_TO_INR = 89.5;
         return {
+            clickCount: kelkooApiData.clickCount,
             totalLeads: kelkooApiData.leadCount,
             totalRevenueEur: kelkooApiData.leadEstimatedRevenueInEur,
-            totalRevenueInr: kelkooApiData.leadEstimatedRevenueInEur * EUR_TO_INR,
+            totalRevenueInr: kelkooApiData.leadEstimatedRevenueInEur * EXCHANGE_RATES.EUR_TO_INR,
             totalSales: kelkooApiData.saleCount,
             totalSaleValueEur: kelkooApiData.saleValueInEur,
-            totalSaleValueInr: kelkooApiData.saleValueInEur * EUR_TO_INR,
+            totalSaleValueInr: kelkooApiData.saleValueInEur * EXCHANGE_RATES.EUR_TO_INR,
             cpc: kelkooApiData.leadEstimatedRevenueInEur / kelkooApiData.leadCount,
             vpl: kelkooApiData.valuePerLeadInEur,
             conversionRate: kelkooApiData.crPercentage,
@@ -676,6 +678,7 @@ export default function DashboardPage() {
     // Live Admedia aggregates from API
     const liveAdmediaAggregates = useMemo(() => {
         if (!admediaApiData) return {
+            totalClicks: 0,
             totalLeads: 0,
             totalConversions: 0,
             totalEarningsUsd: 0,
@@ -686,6 +689,7 @@ export default function DashboardPage() {
             cpl: 0,
         };
         return {
+            totalClicks: admediaApiData.clicks,
             totalLeads: admediaApiData.leads,
             totalConversions: admediaApiData.conversions,
             totalEarningsUsd: admediaApiData.earnings,
@@ -912,14 +916,17 @@ export default function DashboardPage() {
 
         // 2. Add Partner Data
         // Kelkoo: sales are effectively conversions
+        result.clicks += liveKelkooAggregates.clickCount;
         result.conversions += liveKelkooAggregates.totalSales;
         result.conversion_value += liveKelkooAggregates.totalRevenueInr;
 
         // Admedia: conversions key exists directly
+        result.clicks += liveAdmediaAggregates.totalClicks;
         result.conversions += liveAdmediaAggregates.totalConversions;
         result.conversion_value += liveAdmediaAggregates.totalEarningsInr;
 
         // MaxBounty: sales are effectively conversions
+        result.clicks += liveMaxBountyAggregates.clicks;
         result.conversions += liveMaxBountyAggregates.sales;
         result.conversion_value += liveMaxBountyAggregates.earningsInr;
 
