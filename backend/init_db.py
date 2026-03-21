@@ -25,9 +25,11 @@ async def init_db():
     print(f"Database URL: {settings.database_url}")
     
     # Create async engine
+    db_url, db_connect_args = get_async_database_url(settings.database_url)
     engine = create_async_engine(
-        get_async_database_url(settings.database_url),
-        echo=True
+        db_url,
+        echo=True,
+        connect_args=db_connect_args,
     )
     
     # Create all tables
