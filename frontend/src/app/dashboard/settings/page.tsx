@@ -81,7 +81,7 @@ export default function SettingsPage() {
         try {
             const token = localStorage.getItem("token");
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || "https://googleads-dashboard-backend.onrender.com/api"}/sync/trigger?days=${syncDays}`,
+                `${process.env.NEXT_PUBLIC_API_URL || "https://genuine-syrniki-794d39.netlify.app/.netlify/functions/api_func/api"}/sync/trigger?days=${syncDays}`,
                 {
                     method: "POST",
                     headers: {

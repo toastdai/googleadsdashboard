@@ -1,6 +1,7 @@
 """
 TellSpike Backend - Main Application Entry Point
 """
+import os
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -12,6 +13,10 @@ from app.api import auth, accounts, dashboard, campaigns, metrics, alerts, repor
 from app.api.alerts_telegram import router as alerts_telegram_router
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.services.auto_sync import start_auto_sync_scheduler, stop_auto_sync_scheduler
+
+
+# Detect serverless environment (AWS Lambda / Netlify Functions)
+IS_SERVERLESS = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
 
 
 @asynccontextmanager
@@ -30,19 +35,24 @@ async def lifespan(app: FastAPI):
     else:
         print("MongoDB not configured - running without database")
     
-    # Start the background scheduler for automatic spike detection
-    print("Starting background scheduler for spike alerts...")
-    start_scheduler()
-    
-    # Start auto-sync scheduler (runs every 6 hours)
-    print("Starting auto-sync scheduler (every 6 hours)...")
-    start_auto_sync_scheduler()
+    # Skip schedulers in serverless mode (no persistent process)
+    if not IS_SERVERLESS:
+        # Start the background scheduler for automatic spike detection
+        print("Starting background scheduler for spike alerts...")
+        start_scheduler()
+        
+        # Start auto-sync scheduler (runs every 6 hours)
+        print("Starting auto-sync scheduler (every 6 hours)...")
+        start_auto_sync_scheduler()
+    else:
+        print("Running in serverless mode - schedulers disabled")
     
     yield
     
     # Shutdown: Stop scheduler and close MongoDB
-    stop_scheduler()
-    stop_auto_sync_scheduler()
+    if not IS_SERVERLESS:
+        stop_scheduler()
+        stop_auto_sync_scheduler()
     await close_mongodb()
 
 
@@ -74,6 +84,7 @@ if extra_origins:
 production_urls = [
     "https://googleadsdashboard-beta.vercel.app",
     "https://googleadsdashboard.vercel.app",
+    "https://genuine-syrniki-794d39.netlify.app",
 ]
 allowed_origins = list(set(default_origins + production_urls))
 

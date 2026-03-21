@@ -1,0 +1,32 @@
+[build]
+  base = "backend/"
+  command = "mkdir -p netlify/functions/api_func && cp -r app netlify/functions/api_func/app && cp requirements.txt netlify/functions/api_func/"
+  functions = "netlify/functions"
+
+[functions]
+  directory = "netlify/functions"
+
+# Redirect all requests to the API function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api_func/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/"
+  to = "/.netlify/functions/api_func"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/api_func"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/docs"
+  to = "/.netlify/functions/api_func"
+  status = 200
+  force = true
