@@ -231,7 +231,7 @@ export function useDashboardData(startDate: string, endDate: string) {
 
             try {
                 // Default to deployed backend when env var missing (production safety)
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://genuine-syrniki-794d39.netlify.app/.netlify/functions/api_func/api';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://googleads-dashboard-backend.onrender.com/api';
                 const token = localStorage.getItem('token');
 
                 const headers = {
