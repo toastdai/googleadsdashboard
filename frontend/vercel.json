@@ -4,7 +4,7 @@
     "framework": "nextjs",
     "installCommand": "npm install",
     "env": {
-        "NEXT_PUBLIC_API_URL": "https://googleads-dashboard-backend.onrender.com/api",
+        "NEXT_PUBLIC_API_URL": "https://genuine-syrniki-794d39.netlify.app/api",
         "NEXT_PUBLIC_APP_NAME": "TellSpike",
         "NEXT_PUBLIC_APP_ENV": "production"
     }

@@ -1,32 +1,33 @@
 [build]
   base = "backend/"
-  command = "mkdir -p netlify/functions/api_func && cp -r app netlify/functions/api_func/app && cp requirements.txt netlify/functions/api_func/"
-  functions = "netlify/functions"
+  command = "npm install"
+  publish = "."
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
 
-# Redirect all requests to the API function
+# Redirect all API traffic to the function
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api_func/api/:splat"
+  to = "/.netlify/functions/api/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/"
-  to = "/.netlify/functions/api_func"
+  to = "/.netlify/functions/api"
   status = 200
   force = true
 
 [[redirects]]
   from = "/health"
-  to = "/.netlify/functions/api_func"
+  to = "/.netlify/functions/api/health"
   status = 200
   force = true
 
 [[redirects]]
   from = "/docs"
-  to = "/.netlify/functions/api_func"
+  to = "/.netlify/functions/api"
   status = 200
   force = true
